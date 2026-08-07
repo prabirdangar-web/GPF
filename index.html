@@ -237,7 +237,9 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
         </select>
         <input data-f="treasury" id="f_treasury" placeholder="Treasury name" style="margin-top:5px;">
       </div>
-      <div class="field wide" style="align-self:end;"><button type="button" id="btnFetchLedger" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Excluding FY / Interest-upto FY / Amount Claimed from Ledger</button></div>
+      <div class="field wide" style="align-self:end;"><button type="button" id="btnFetchLedger" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Excluding FY / Interest-upto FY / Amount Claimed / Sanctioned Amount from Ledger</button>
+        <div class="hint">Also fills the Sanctioned Amount by DPPG field (Sanction / Authority fieldset below) with the principal + interest total through the last ledger F.Y. All fetched fields remain editable.</div>
+      </div>
     </div>
   </fieldset>
 
@@ -270,7 +272,15 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
     <legend>Spouse / Family (for No-Liability &amp; Nomination context)</legend>
     <div class="grid">
       <div class="field"><label>Spouse Name</label><input data-f="spouseName"></div>
-      <div class="field"><label>Relationship</label><input data-f="spouseRel" placeholder="WIFE / HUSBAND"></div>
+      <div class="field"><label>Relationship</label>
+        <select id="f_spouseRelSel">
+          <option value="">— select —</option>
+          <option value="WIFE">WIFE</option>
+          <option value="HUSBAND">HUSBAND</option>
+          <option value="__manual__">Other (type manually)</option>
+        </select>
+        <input data-f="spouseRel" id="f_spouseRel" placeholder="WIFE / HUSBAND" style="margin-top:5px;">
+      </div>
       <div class="field"><label>Spouse Status</label>
         <select id="f_spouseStatusSel">
           <option value="HOUSEWIFE">HOUSEWIFE</option>
@@ -284,10 +294,26 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
       <div class="field"><label>Spouse DOB</label><input type="date" data-f="spouseDob"></div>
       <div class="field wide"><label>Spouse Address</label><textarea data-f="spouseAddress"></textarea></div>
       <div class="field"><label>Child 1 Name</label><input data-f="child1Name"></div>
-      <div class="field"><label>Child 1 Relation</label><input data-f="child1Rel" placeholder="SON / DAUGHTER"></div>
+      <div class="field"><label>Child 1 Relation</label>
+        <select id="f_child1RelSel">
+          <option value="">— select —</option>
+          <option value="SON">SON</option>
+          <option value="DAUGHTER">DAUGHTER</option>
+          <option value="__manual__">Other (type manually)</option>
+        </select>
+        <input data-f="child1Rel" id="f_child1Rel" placeholder="SON / DAUGHTER" style="margin-top:5px;">
+      </div>
       <div class="field"><label>Child 1 DOB</label><input type="date" data-f="child1Dob"></div>
       <div class="field"><label>Child 2 Name</label><input data-f="child2Name"></div>
-      <div class="field"><label>Child 2 Relation</label><input data-f="child2Rel"></div>
+      <div class="field"><label>Child 2 Relation</label>
+        <select id="f_child2RelSel">
+          <option value="">— select —</option>
+          <option value="SON">SON</option>
+          <option value="DAUGHTER">DAUGHTER</option>
+          <option value="__manual__">Other (type manually)</option>
+        </select>
+        <input data-f="child2Rel" id="f_child2Rel" placeholder="SON / DAUGHTER" style="margin-top:5px;">
+      </div>
       <div class="field"><label>Child 2 DOB</label><input type="date" data-f="child2Dob"></div>
     </div>
   </fieldset>
@@ -304,8 +330,8 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <!-- ================= NOMINEE TAB ================= -->
 <section class="panel" id="panel-nominee">
-  <div class="field wide" style="margin-bottom:12px;"><button type="button" id="btnFetchNominee" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Nominee 1 &amp; 2 from Main DB (Spouse / Child particulars entered in the Employee &amp; School Data tab)</button>
-    <div class="hint">Fills Nominee 1 from Spouse details and Nominee 2 from Child 1 details already entered on the Employee tab. Also auto-fills "Person to whom right shall pass on contingency" for each nominee from the Child 1 / Child 2 records (as SON or DAUGHTER, per the Relation typed on the Employee tab) — if both children are on file, both are listed with a note that the share is divided equally between them. Existing Nominee entries are overwritten — review, and edit manually, before printing.</div>
+  <div class="field wide" style="margin-bottom:12px;"><button type="button" id="btnFetchNominee" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Nominee 1 from Main DB (Spouse particulars entered in the Employee &amp; School Data tab)</button>
+    <div class="hint">Fills Nominee 1 from Spouse details already entered on the Employee tab, at 100% share. Also auto-fills "Person to whom right shall pass on contingency" from the Child 1 / Child 2 records (as SON or DAUGHTER, per the Relation typed on the Employee tab), each with its own contingency share — 100% if one child is on file, split equally (e.g. 50% each) if more than one; on the printed nomination form each is separated by a drawn line. Nominee 2 is optional and is kept blank by this auto-fetch — fill it in manually if a second nominee is required. Existing Nominee 1 entries are overwritten — review, and edit manually, before printing.</div>
   </div>
   <fieldset>
     <legend>Nominee 1</legend>
@@ -466,11 +492,15 @@ function fillForm(){
   if(document.getElementById('f_totalService')) autoCalcService();
   syncPresetSelect('f_treasurySel', rec.treasury, ['Khatra Treasury (BAC)','Bankura Treasury (BAA)']);
   syncPresetSelect('f_spouseStatusSel', rec.spouseStatus, ['HOUSEWIFE','UNMARRIED','IN-SERVICE','DIVORCED']);
+  syncPresetSelect('f_spouseRelSel', rec.spouseRel, ['WIFE','HUSBAND'], true);
+  syncPresetSelect('f_child1RelSel', rec.child1Rel, ['SON','DAUGHTER'], true);
+  syncPresetSelect('f_child2RelSel', rec.child2Rel, ['SON','DAUGHTER'], true);
 }
 
-function syncPresetSelect(selectId, currentValue, knownValues){
+function syncPresetSelect(selectId, currentValue, knownValues, blankIsBlank){
   const sel = document.getElementById(selectId);
   if(!sel) return;
+  if(blankIsBlank && !currentValue){ sel.value = ''; return; }
   sel.value = knownValues.includes(currentValue) ? currentValue : '__manual__';
 }
 
@@ -544,6 +574,21 @@ document.getElementById('f_spouseStatusSel').addEventListener('change', ()=>{
   if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
   else { inp.value=''; inp.focus(); }
 });
+document.getElementById('f_spouseRelSel').addEventListener('change', ()=>{
+  const sel = document.getElementById('f_spouseRelSel'), inp = document.getElementById('f_spouseRel');
+  if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
+  else { inp.value=''; inp.focus(); }
+});
+document.getElementById('f_child1RelSel').addEventListener('change', ()=>{
+  const sel = document.getElementById('f_child1RelSel'), inp = document.getElementById('f_child1Rel');
+  if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
+  else { inp.value=''; inp.focus(); }
+});
+document.getElementById('f_child2RelSel').addEventListener('change', ()=>{
+  const sel = document.getElementById('f_child2RelSel'), inp = document.getElementById('f_child2Rel');
+  if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
+  else { inp.value=''; inp.focus(); }
+});
 
 /* ============================================================
    AUTO-FETCH EXCLUDING FY / INTEREST-UPTO FY / AMOUNT CLAIMED FROM LEDGER
@@ -559,8 +604,9 @@ document.getElementById('btnFetchLedger').addEventListener('click', ()=>{
   rec.interestUptoFY = prevFY;
   const calc = computeYearTotals(rec.ledger[lastFY], lastFY, rec.dor);
   rec.amountClaimed = calc.rows[11].closing; // principal closing balance as of March (or last month with data)
+  rec.sanctionedAmount = calc.closingWithInterest; // principal + interest through the last ledger FY
   saveStore(); fillForm();
-  alert(`Fetched from ledger:\nAmount Claimed (Principal) = ₹${fmtNum(rec.amountClaimed)}\nInterest upto FY: ${prevFY || '— (none)'}\nExcluding Interest of FY: ${lastFY}\n\nPlease verify against the ledger before printing.`);
+  alert(`Fetched from ledger:\nAmount Claimed (Principal) = ₹${fmtNum(rec.amountClaimed)}\nSanctioned Amount by DPPG (incl. interest) = ₹${fmtNum(rec.sanctionedAmount)}\nInterest upto FY: ${prevFY || '— (none)'}\nExcluding Interest of FY: ${lastFY}\n\nAll figures are editable — please verify against the ledger before printing.`);
 });
 
 /* ============================================================
@@ -570,8 +616,8 @@ document.getElementById('btnFetchLedger').addEventListener('click', ()=>{
 document.getElementById('btnFetchNominee').addEventListener('click', ()=>{
   const rec = currentRecord(); if(!rec) return;
   readForm();
-  if(!rec.spouseName && !rec.child1Name){
-    alert('No Spouse or Child particulars found on the Employee & School Data tab yet. Fill in the Spouse / Family fieldset first.');
+  if(!rec.spouseName){
+    alert('No Spouse particulars found on the Employee & School Data tab yet. Fill in the Spouse / Family fieldset first.');
     return;
   }
 
@@ -589,42 +635,28 @@ document.getElementById('btnFetchNominee').addEventListener('click', ()=>{
   if(rec.child2Name) children.push({name: rec.child2Name, rel: relLabel(rec.child2Rel)});
 
   // Build the "Person to whom right shall pass on contingency (Name, Address, Relationship)" text
-  // for a given list of children. When more than one child is on file, all are listed and a note
-  // is added that the share is to be divided equally among them — this text can still be edited
-  // by hand afterwards.
+  // for the children on file. Each child's own share-on-contingency is shown against their name —
+  // 100% if only one child is on file, split equally (e.g. 50% each for 2) if more than one. Each
+  // entry is placed on its own line, separated on the main nomination form by a drawn line; this
+  // text can still be edited by hand afterwards.
   function altText(list){
     if(!list.length) return '';
-    const parts = list.map(c => `${c.name}, ${rec.employeeAddress||''} (${c.rel})`.trim());
-    return list.length > 1
-      ? parts.join(' ; ') + ' — share on contingency to be divided equally among the above'
-      : parts[0];
+    const share = list.length > 1 ? Math.round(100/list.length) : 100;
+    return list.map(c => `${c.name}, ${rec.employeeAddress||''} (${c.rel}) — ${share}% share on contingency`.trim()).join('\n');
   }
 
-  if(rec.spouseName){
-    const spouseAddr = [rec.spouseName, rec.spouseAddress || rec.employeeAddress].filter(Boolean).join(', ');
-    rec.nom1Address = spouseAddr;
-    rec.nom1Rel = rec.spouseRel || '';
-    rec.nom1Dob = rec.spouseDob || '';
-    rec.nom1Share = rec.child1Name ? 50 : 100;
-    // If the spouse's nomination is invalidated, the right passes to the son(s)/daughter(s) on file
-    rec.nom1Alt = altText(children);
-  }
-  if(rec.child1Name){
-    const childAddr = [rec.child1Name, rec.employeeAddress].filter(Boolean).join(', ');
-    rec.nom2Address = childAddr;
-    rec.nom2Rel = rec.child1Rel || '';
-    rec.nom2Dob = rec.child1Dob || '';
-    rec.nom2Share = rec.spouseName ? 50 : 100;
-    // Alternate for Nominee 2: any other child on file; otherwise the spouse
-    const otherChildren = children.filter(c => c.name !== rec.child1Name);
-    if(otherChildren.length){
-      rec.nom2Alt = altText(otherChildren);
-    } else if(rec.spouseName){
-      rec.nom2Alt = `${rec.spouseName}, ${(rec.spouseAddress || rec.employeeAddress || '').trim()} (${rec.spouseRel || 'SPOUSE'})`.trim();
-    }
-  }
+  // Only Nominee 1 is auto-filled, from the Spouse. Nominee 2 is optional and is left blank —
+  // fill it in manually if a second nominee is required.
+  const spouseAddr = [rec.spouseName, rec.spouseAddress || rec.employeeAddress].filter(Boolean).join(', ');
+  rec.nom1Address = spouseAddr;
+  rec.nom1Rel = rec.spouseRel || '';
+  rec.nom1Dob = rec.spouseDob || '';
+  rec.nom1Share = 100;
+  // If the spouse's nomination is invalidated, the right passes to the son(s)/daughter(s) on file
+  rec.nom1Alt = altText(children);
+
   saveStore(); fillForm();
-  alert('Nominee 1 filled from Spouse and Nominee 2 filled from Child 1 particulars, including the "Person to whom right shall pass on contingency" field (son/daughter, with equal-share note if more than one). Please review — and edit manually if needed — before printing.');
+  alert('Nominee 1 filled from Spouse particulars (100% share), including the "Person to whom right shall pass on contingency" field listing the children on file with their own contingency share (100% if one, split equally if more than one). Nominee 2 is left blank — fill it in manually if needed. Please review — and edit manually if needed — before printing.');
 });
 
 
@@ -908,6 +940,18 @@ function esc(s){ return (s===undefined||s===null) ? '' : String(s); }
 function B(html){ return `<b>${html}</b>`; }
 
 /* ============================================================
+   SUBJECT & GROUP — omitted from every document sentence when
+   left blank or typed as NA / N.A. / N/A, so the printed text
+   never reads "... in NA ...".
+   ============================================================ */
+function hasSG(rec){
+  const v = String(rec.subjectGroup||'').trim().toUpperCase();
+  return !!v && v!=='NA' && v!=='N.A.' && v!=='N/A' && v!=='N.A';
+}
+function sgPhrase(rec){ return hasSG(rec) ? ` in ${esc(rec.subjectGroup)}` : ''; }
+function sgPhraseBn(rec){ return hasSG(rec) ? ` বিষয়: ${esc(rec.subjectGroup)}` : ''; }
+
+/* ============================================================
    PRONOUNS — derived from Sex of Staff (MALE/FEMALE); falls
    back to the neutral he/she form when Sex of Staff is blank.
    ============================================================ */
@@ -1080,7 +1124,7 @@ function docAPP(rec){
     <div class="doc-ref">Ref: Employee ID: ${B(esc(rec.employeeCode))} ; PF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
   const body = `
   <p>Sir,</p>
-  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, have been serving in the post of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, have been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
   <p>My total length of service, reckoned from ${B(fmtDate(rec.dofj))} to ${B(fmtDate(rec.dor))}, stands at ${B(esc(rec.totalService))}${rec.prevSchool ? ', inclusive of prior service rendered at ' + esc(rec.prevSchool) : ''}.</p>
   <p>It may also be mentioned for your kind information that I have no liabilities in this school either in cash or kind.</p>
   <p>Hence you are requested to take necessary steps for making Final Payment from my own contribution to the G.P.F. including up to date accrued interest admissible as per rule, standing at credit in my GPF account.</p>
@@ -1107,7 +1151,7 @@ function docMCREng(rec){
   const words = numberToWords(amountClaimedNumRounded(rec));
   const title = `<div class="doc-title">Resolution of the Managing Committee<br>Regarding Final Payment of GPF to ${B(esc(rec.staffName))}</div>`;
   const body = `
-  <p>In the meeting of the Managing Committee, an application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} was placed for consideration. The application pertains to the Final Payment of ${pron(rec,'hisHer')} General Provident Fund (GPF) on account of ${pron(rec,'hisHer')} forthcoming ${esc(rec.causeOfClaim).toLowerCase()} on the afternoon of ${B(fmtDate(rec.dor))}. Upon thorough examination of the relevant records and documents, it has been verified that ${B(esc(rec.staffName))} has been serving in the capacity of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)}, against a permanent post in this institution ${esc(rec.schoolName)}, since ${B(fmtDate(rec.dofj))}, without any break in service. ${pron(rec,'HisHer')} appointment was duly approved vide Memo No. ${B(esc(rec.approvalNoDate))}.</p>
+  <p>In the meeting of the Managing Committee, an application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} was placed for consideration. The application pertains to the Final Payment of ${pron(rec,'hisHer')} General Provident Fund (GPF) on account of ${pron(rec,'hisHer')} forthcoming ${esc(rec.causeOfClaim).toLowerCase()} on the afternoon of ${B(fmtDate(rec.dor))}. Upon thorough examination of the relevant records and documents, it has been verified that ${B(esc(rec.staffName))} has been serving in the capacity of ${B(esc(rec.designation))}${sgPhrase(rec)}, against a permanent post in this institution ${esc(rec.schoolName)}, since ${B(fmtDate(rec.dofj))}, without any break in service. ${pron(rec,'HisHer')} appointment was duly approved vide Memo No. ${B(esc(rec.approvalNoDate))}.</p>
   <p>Further verification confirms that ${B(esc(rec.staffName))} holds no liabilities, whether in cash or kind, to the school or to the office of the A.I. of Schools (S.E.), ${esc(rec.aiOfficeAddress)}. There are no instances of salary overdrawal, nor is there any outstanding recovery against loans or advances from ${pron(rec,'hisHer')} GPF account. Additionally, there are no court cases or litigation pending against ${pron(rec,'himHer')} in connection with ${pron(rec,'hisHer')} service.</p>
   <p>In light of the above, the Managing Committee unanimously approves and resolves to sanction the Final Payment of GPF in favour of ${B(esc(rec.staffName))}, in accordance with existing rules.</p>
   <p>It is also hereby observed that, after excluding interest for the financial year(s) ${esc(rec.excludingFY)}, an amount of ${B(money(rec.amountClaimed))} [Rupees ${B(words)}] remains credited in ${pron(rec,'hisHer')} GPF account, inclusive of interest accrued up to the financial year ${esc(rec.interestUptoFY)}.</p>
@@ -1121,7 +1165,7 @@ function docMCRBng(rec){
   const title = `<div class="doc-title bn">প্রসঙ্গ: ${B(esc(rec.staffName))}-এর জি.পি.এফ. Final Payment সংক্রান্ত পরিচালন সমিতির সিদ্ধান্ত</div>`;
   const body = `<div class="bn">
   <p>পরিচালন সমিতির সভাপতি মাননীয়/মাননীয়া __________________ মহাশয়/মহাশয়া অদ্য সভায় সভাপতির আসন গ্রহণ করলে সভার কার্যক্রম শুরু হয়।</p>
-  <p>বিদ্যালয়ের পরিচালন সমিতির আজকের এই সভায় বিদ্যালয়ের ${B(esc(rec.designation))} মাননীয়/মাননীয়া ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')}-এর পেশ করা ভবিষ্যনিধি তহবিল (GPF) থেকে Final Payment অনুমোদন সংক্রান্ত বিষয়ক আবেদনটি বিবেচনার জন্য বিদ্যালয়ের মাননীয়/মাননীয়া ${esc(rec.hoiStatus)} মহাশয়/মহাশয়া উপস্থাপন করলে দেখা গেল ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')} আগামী ${B(fmtDate(rec.dor))} তারিখ বিকেলে তাঁর দীর্ঘ চাকুরি জীবন থেকে অবসর গ্রহণ (${esc(rec.causeOfClaim)}) করবেন। এই প্রেক্ষিতে বিষয়টি বিশদভাবে পরীক্ষা-নিরীক্ষা করে দেখা যায় যে, মাননীয়/মাননীয়া ${B(esc(rec.staffName))} বিদ্যালয়ের স্থায়ী পদে ${B(esc(rec.designation))} হিসাবে বিষয়: ${esc(rec.subjectGroup)} গত ${B(fmtDate(rec.dofj))} তারিখে যোগদান করে নিরবিচ্ছিন্ন ও সন্তোষজনক ভাবে চাকুরি করে চলেছেন ও তাঁর নিয়োগ যথাযথভাবে অনুমোদিত (মেমো নং ${B(esc(rec.approvalNoDate))})।</p>
+  <p>বিদ্যালয়ের পরিচালন সমিতির আজকের এই সভায় বিদ্যালয়ের ${B(esc(rec.designation))} মাননীয়/মাননীয়া ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')}-এর পেশ করা ভবিষ্যনিধি তহবিল (GPF) থেকে Final Payment অনুমোদন সংক্রান্ত বিষয়ক আবেদনটি বিবেচনার জন্য বিদ্যালয়ের মাননীয়/মাননীয়া ${esc(rec.hoiStatus)} মহাশয়/মহাশয়া উপস্থাপন করলে দেখা গেল ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')} আগামী ${B(fmtDate(rec.dor))} তারিখ বিকেলে তাঁর দীর্ঘ চাকুরি জীবন থেকে অবসর গ্রহণ (${esc(rec.causeOfClaim)}) করবেন। এই প্রেক্ষিতে বিষয়টি বিশদভাবে পরীক্ষা-নিরীক্ষা করে দেখা যায় যে, মাননীয়/মাননীয়া ${B(esc(rec.staffName))} বিদ্যালয়ের স্থায়ী পদে ${B(esc(rec.designation))} হিসাবে${sgPhraseBn(rec)} গত ${B(fmtDate(rec.dofj))} তারিখে যোগদান করে নিরবিচ্ছিন্ন ও সন্তোষজনক ভাবে চাকুরি করে চলেছেন ও তাঁর নিয়োগ যথাযথভাবে অনুমোদিত (মেমো নং ${B(esc(rec.approvalNoDate))})।</p>
   <p>উপরোক্ত বিবেচনায় বর্তমান নিয়ম অনুসারে মাননীয়/মাননীয়া ${B(esc(rec.staffName))} মহাশয়ের/মহাশয়ার ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত সুদ সহ মোট প্রাপ্য টাকা তাঁর অনুকূলে মঞ্জুর ও প্রদানের জন্য বিদ্যালয়ের পরিচালন সমিতির আজকের এই সভায় সর্বসম্মতিক্রমে সিদ্ধান্ত গৃহীত ও অনুমোদিত হল। প্রকাশ থাকে যে ${esc(rec.excludingFY)} অর্থবছর-এর সুদ ব্যতীত ${B(esc(rec.staffName))}-এর ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত মোট অর্থের পরিমাণ ${B(money(rec.amountClaimed))}/- (Rupees ${B(words)}) টাকা [এই পরিমাণের মধ্যে অর্থবছর ${esc(rec.interestUptoFY)} পর্যন্ত সুদ অন্তর্ভুক্ত রয়েছে]।</p>
   <p>অতিরিক্ত বেতন প্রদান, ঋণ আদায় না হওয়া এবং জিপিএফের অগ্রিম আদায় করার ক্ষেত্রে A.I./S (S.E.), ${esc(rec.aiOfficeAddress)}-এর সাথে Cash or Kind কোনও দায়বদ্ধতা নেই যা তাঁর জি.পি.এফ. A/C থেকে এখনও আদায় করা হয়নি। তাঁর চাকরির বিরুদ্ধে কোনো আদালতে মামলা বা মোকদ্দমা নেই।</p>
   <p>এখন অত্র বিদ্যালয়ের ${esc(rec.hoiStatus)} মহাশয়/মহাশয়া-কে এই বিষয়ে NGIPF মডিউল-এর মাধ্যমে ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত সুদ সহ মোট প্রাপ্য টাকা তাঁর অনুকূলে মঞ্জুর ও প্রদানের জন্য অনলাইন আবেদন জমা দেওয়ার জন্য ও অন্যান্য আনুষঙ্গিক প্রয়োজনীয় পদক্ষেপ গ্রহণ করার জন্য সর্বসম্মতিক্রমে ক্ষমতা ও দায়িত্ব অর্পণ করা হল।</p>
@@ -1139,7 +1183,7 @@ function docAdmnOrder(rec){
   <p>${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, an approved ${B(esc(rec.designation))} of this school, has submitted an application for Final Payment in ${pron(rec,'hisHer')} favour of the balance amount including interest up to ${B(fmtDate(rec.dor))} standing at ${pron(rec,'hisHer')} credit in the GPF account, as ${pron(rec,'heShe')} will retire from service on ${B(fmtDate(rec.dor))} (a.n.) due to ${esc(rec.causeOfClaim).toLowerCase()}. It may also be noted that ${pron(rec,'heShe')} has no liabilities in this school either in cash or kind. ${pron(rec,'HisHer')} application along with supporting documents are being placed for taking necessary steps in this regard.</p>
   <p style="font-weight:700;margin-top:18px;">Administrator Order:</p>
   <div class="doc-ref">Administrator Order No: _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _</div>
-  <p>As per the application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} (${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]) regarding Final Payment of P.F., and upon verification of related papers and records, it is seen that ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been serving in the post of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>As per the application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} (${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]) regarding Final Payment of P.F., and upon verification of related papers and records, it is seen that ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
   <p>It is also seen that ${pron(rec,'heShe')} has no liabilities either in cash or kind with the school or the A.I./S (S.E.) in respect of overdrawal of salary, non-recovery of loans and advance against G.P.F. which is yet to be recovered from ${pron(rec,'hisHer')} GPF A/C. There is no court case or any litigation against ${pron(rec,'hisHer')} service.</p>
   <p>Now it is hereby granted and passed for Final Payment of GPF in favour of ${B(esc(rec.staffName))}, in accordance with existing rules.</p>
   <p>It is also hereby observed that, after excluding interest for the financial year(s) ${esc(rec.excludingFY)}, an amount of ${B(money(rec.amountClaimed))} [Rupees ${B(words)}] remains credited in ${pron(rec,'hisHer')} GPF account, inclusive of interest accrued up to the financial year ${esc(rec.interestUptoFY)}.</p>
@@ -1207,6 +1251,13 @@ function docMandate(rec){
 function docNOM(rec){
   const title = `<div class="doc-title">First Schedule [See Rule 8(3)]<br>Form of Nomination</div>
     <div class="doc-ref">Account No. ${B(esc(rec.pfAccNo))}. I hereby nominate the person(s) mentioned below who is/are member(s)/non-member(s) of my family as defined in Rule-2 of the GPF Rules to receive the amount standing to my credit in the Fund.</div>`;
+  // "Person to whom right shall pass on contingency" — when more than one person is listed
+  // (one per line), they are separated by a drawn line in the printed nomination form.
+  function altCell(alt){
+    const lines = String(alt||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    if(!lines.length) return '';
+    return lines.map(l=>esc(l)).join('<hr style="margin:4px 0;border:none;border-top:1px solid #8a97a5;">');
+  }
   function nomRow(n){
     const addr = rec['nom'+n+'Address']; if(!addr) return '';
     return `<tr>
@@ -1215,7 +1266,7 @@ function docNOM(rec){
       <td>${B(fmtDate(rec['nom'+n+'Dob']))}</td>
       <td>${B(esc(rec['nom'+n+'Share'])+'%')}</td>
       <td>${esc(rec['nom'+n+'Contingency'])}</td>
-      <td>${esc(rec['nom'+n+'Alt'])}</td>
+      <td>${altCell(rec['nom'+n+'Alt'])}</td>
       <td>${esc(rec['nom'+n+'Reason'])}</td>
     </tr>`;
   }
