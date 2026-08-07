@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPF Final Payment — Document Generation Suite</title>
+<style>
+:root{
+  --navy:#0b3d66; --navy2:#14527f; --accent:#c8961e; --bg:#eef2f6; --line:#c7d1db;
+  --ok:#1e7d3c; --danger:#b3261e;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Arial, "Segoe UI", sans-serif;background:var(--bg);color:#1b2733;}
+header.app{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+header.app h1{font-size:18px;margin:0;font-weight:600;}
+header.app .sub{font-size:11.5px;opacity:.85;margin-top:2px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.toolbar select, .toolbar button, .toolbar input[type=file]::file-selector-button{
+  font-family:inherit;font-size:12.5px;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.4);
+  background:rgba(255,255,255,.12);color:#fff;cursor:pointer;
+}
+.toolbar select{background:#fff;color:#0b2338;min-width:220px;}
+.toolbar button:hover{background:rgba(255,255,255,.28);}
+.toolbar button.primary{background:var(--accent);border-color:var(--accent);color:#2a1d00;font-weight:600;}
+.toolbar button.danger{background:#7a231d;border-color:#7a231d;}
+
+nav.tabs{display:flex;gap:2px;background:#0b2338;padding:0 16px;flex-wrap:wrap;}
+nav.tabs button{background:transparent;border:none;color:#c9d6e3;padding:11px 16px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit;}
+nav.tabs button.active{color:#fff;border-bottom-color:var(--accent);background:#12314f;}
+
+main{max-width:1200px;margin:18px auto;padding:0 16px 60px;}
+.panel{display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(20,40,60,.06);}
+.panel.active{display:block;}
+
+fieldset{border:1px solid var(--line);border-radius:8px;margin:0 0 16px;padding:12px 14px 16px;}
+legend{font-size:12.5px;font-weight:700;color:var(--navy);padding:0 6px;text-transform:uppercase;letter-spacing:.03em;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px 14px;}
+.field{display:flex;flex-direction:column;gap:3px;}
+.field.wide{grid-column:1/-1;}
+.field label{font-size:11.3px;color:#45566a;font-weight:600;}
+.field input, .field select, .field textarea{
+  font-family:inherit;font-size:12.8px;padding:7px 8px;border:1px solid #b9c5d1;border-radius:5px;background:#fbfcfe;
+}
+.field textarea{min-height:44px;resize:vertical;}
+.hint{font-size:10.5px;color:#8494a5;margin-top:1px;}
+
+table.led{width:100%;border-collapse:collapse;font-size:11.6px;}
+table.led th, table.led td{border:1px solid #ccd6e0;padding:4px 5px;text-align:center;}
+table.led th{background:#f0f4f8;color:#28425f;font-weight:700;}
+table.led td input{width:100%;border:none;background:transparent;text-align:center;font-size:11.6px;font-family:inherit;}
+table.led tfoot td{font-weight:700;background:#f7fafc;}
+.yearbar{display:flex;align-items:center;gap:10px;margin:6px 0 12px;flex-wrap:wrap;}
+.yearbar select{padding:6px 8px;border-radius:6px;border:1px solid #b9c5d1;}
+.summary{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;}
+.summary b{color:var(--navy);}
+
+.docgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.doccard{border:1px solid var(--line);border-radius:8px;padding:12px;background:#fbfcfe;}
+.doccard h4{margin:0 0 4px;font-size:13px;color:var(--navy);}
+.doccard p{margin:0 0 10px;font-size:11.3px;color:#57687a;min-height:28px;}
+.doccard button{width:100%;padding:7px;font-size:12px;border-radius:6px;border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer;}
+.doccard button:hover{background:var(--navy2);}
+.printall{margin:14px 0 4px;padding:11px 16px;background:var(--accent);border:none;border-radius:7px;font-weight:700;color:#2a1d00;cursor:pointer;font-size:13.5px;}
+
+/* preview / print */
+#previewWrap{display:none;position:fixed;inset:0;background:rgba(10,20,30,.55);z-index:50;overflow:auto;padding:24px;}
+#previewWrap.show{display:block;}
+#previewBar{max-width:210mm;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:8px;}
+#previewBar button{padding:8px 16px;border-radius:6px;border:1px solid #fff;background:var(--navy);color:#fff;cursor:pointer;font-size:12.5px;}
+#printArea{background:#fff;max-width:210mm;margin:0 auto;padding:10px;}
+
+.docpage{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto 14px;background:#fff;padding:18mm 16mm;font-family:"Lucida Bright","Lucida Serif","Book Antiqua","Palatino Linotype",Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;color:#111;position:relative;page-break-after:always;overflow:hidden;}
+.docpage:last-child{page-break-after:auto;}
+.lh-top{text-align:center;border-bottom:2.5px solid #0b3d66;padding-bottom:8px;margin-bottom:16px;}
+.lh-school{font-size:19px;font-weight:700;color:#0b3d66;letter-spacing:.02em;}
+.lh-addr{font-size:11.5px;margin-top:2px;color:#333;}
+.lh-meta{font-size:10.5px;color:#555;margin-top:3px;}
+.doc-title{text-align:center;font-weight:700;font-size:14.5px;text-decoration:underline;margin:6px 0 14px;text-transform:uppercase;}
+.doc-ref{font-size:12px;margin-bottom:10px;}
+.doc-body p{margin:0 0 10px;text-align:justify;}
+.sig-row{display:flex;justify-content:space-between;margin-top:46px;}
+.sig-block{text-align:center;font-size:12.5px;}
+.sig-line{border-top:1px solid #111;padding-top:3px;margin-top:38px;width:220px;}
+table.formtbl{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px;}
+table.formtbl th,table.formtbl td{border:1px solid #444;padding:5px 6px;text-align:left;vertical-align:top;}
+table.formtbl th{background:#eef2f6;}
+.bn{font-family:"Noto Sans Bengali","Vrinda","Arial Unicode MS",sans-serif;}
+.small{font-size:11px;color:#444;}
+.watermark-cover{text-align:center;}
+.cover-title{font-size:40px;font-weight:800;color:var(--navy);margin:34px 0 12px;letter-spacing:.03em;line-height:1.2;}
+.cover-name{font-size:32px;font-weight:800;margin-top:24px;letter-spacing:.01em;line-height:1.3;}
+.cover-meta{font-size:16px;color:#333;margin-top:8px;}
+.cover-school{font-size:26px;font-weight:800;color:#0b3d66;letter-spacing:.02em;margin-top:10px;}
+.cover-addr{font-size:15px;margin-top:4px;color:#333;}
+
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{position:absolute;left:0;top:0;width:210mm;margin:0;padding:0;}
+  .docpage{box-shadow:none;margin:0;width:210mm;min-height:297mm;padding:18mm 16mm;}
+  @page{size:A4 portrait;margin:0;}
+  #previewBar{display:none;}
+}
+footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;color:#7c8b9b;}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div>
+    <h1>GPF Final Payment — Document Generation Suite</h1>
+    <div class="sub">Taldangra Fulmati High School (H.S.) &nbsp;•&nbsp; District: Bankura &nbsp;•&nbsp; Generated from PF_ALL_Final_Payment_BANKURA structure</div>
+  </div>
+  <div class="toolbar">
+    <select id="recordSelect"></select>
+    <button id="btnNew">＋ New Record</button>
+    <button id="btnSave" class="primary">💾 Save</button>
+    <button id="btnDelete" class="danger">🗑 Delete</button>
+    <button id="btnExport">⬇ Export JSON</button>
+    <label style="display:flex;align-items:center;">
+      <input type="file" id="fileImport" accept="application/json" style="display:none;">
+      <button id="btnImport" type="button">⬆ Import JSON</button>
+    </label>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="employee" class="active">1 · Employee &amp; School Data</button>
+  <button data-tab="nominee">2 · Nomination (Form: First Schedule)</button>
+  <button data-tab="ledger">3 · GPF Ledger &amp; Interest</button>
+  <button data-tab="documents">4 · Generate Documents</button>
+</nav>
+
+<main>
+
+<!-- ================= EMPLOYEE TAB ================= -->
+<section class="panel active" id="panel-employee">
+
+  <fieldset>
+    <legend>School / Office</legend>
+    <div class="grid">
+      <div class="field wide"><label>School Name</label><input data-f="schoolName"></div>
+      <div class="field wide"><label>School Address</label><input data-f="schoolAddress"></div>
+      <div class="field"><label>School e-mail ID</label><input data-f="schoolMailId"></div>
+      <div class="field"><label>HOI Mobile No</label><input data-f="hoiMobile"></div>
+      <div class="field wide"><label>A.I. of Schools (S.E.) Office Address</label>
+        <select data-f="aiOfficeAddress">
+          <option value="">— Select A.I. Office —</option>
+          <option value="Sadar Sub-Division, Bankura ; P.O. &amp; District: Bankura">Sadar Sub-Division, Bankura ; P.O. &amp; District: Bankura</option>
+          <option value="Khatra Sub-Division ; P.O. - Khatra &amp; District: Bankura">Khatra Sub-Division ; P.O. - Khatra &amp; District: Bankura</option>
+        </select>
+        <div class="hint">Enclosure list on the Forwarding Letter changes automatically based on this selection.</div>
+      </div>
+      <div class="field"><label>A.I. Office Code</label><input data-f="aiOfficeCode"></div>
+      <div class="field"><label>HOI Status</label>
+        <select data-f="hoiStatus"><option>TEACHER-IN-CHARGE</option><option>HEADMASTER</option><option>HEADMISTRESS</option><option>Administrator</option></select>
+      </div>
+      <div class="field"><label>Administrative Status</label>
+        <select data-f="adminStatus"><option>President [M.C.]</option><option>Administrator</option><option>Member Secretary [Ad-hoc Committee]</option></select>
+      </div>
+      <div class="field"><label>President / Administrator Name</label><input data-f="presidentName"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Staff Particulars</legend>
+    <div class="grid">
+      <div class="field wide"><label>Name of the Staff</label><input data-f="staffName"></div>
+      <div class="field"><label>Sex of Staff</label>
+        <select data-f="staffSex" id="f_staffSex">
+          <option value="">— Select —</option>
+          <option value="MALE">MALE</option>
+          <option value="FEMALE">FEMALE</option>
+        </select>
+        <div class="hint">Used to set he/she, his/her, Sri/Smt. pronouns automatically in all generated documents.</div>
+      </div>
+      <div class="field"><label>Designation</label>
+        <select data-f="designation">
+          <option value="">— Select —</option>
+          <option value="ASSISTANT TEACHER">ASSISTANT TEACHER</option>
+          <option value="CLERK">CLERK</option>
+          <option value="GR-D STAFF">GR-D STAFF</option>
+          <option value="HEADMASTER">HEADMASTER</option>
+          <option value="HEADMISTRESS">HEADMISTRESS</option>
+          <option value="AHM">AHM</option>
+          <option value="LIBRARIAN">LIBRARIAN</option>
+          <option value="TEACHER-IN-CHARGE">TEACHER-IN-CHARGE</option>
+        </select>
+      </div>
+      <div class="field"><label>Employee Code (iOSMS ID)</label><input data-f="employeeCode"></div>
+      <div class="field"><label>NGIPF A/C No.</label><input data-f="pfAccNo"></div>
+      <div class="field"><label>Previous School</label><input data-f="prevSchool"></div>
+      <div class="field"><label>Date of Birth</label><input type="date" data-f="dob" id="f_dob"></div>
+      <div class="field"><label>Date of First Joining</label><input type="date" data-f="dofj" id="f_dofj"></div>
+      <div class="field"><label>Date of Joining this School</label><input type="date" data-f="dojSchool"></div>
+      <div class="field"><label>Date of Retirement / Cause date</label><input type="date" data-f="dor" id="f_dor">
+        <div class="hint">Auto-filled from D.O.B. on Superannuation Retirement (WBSR rule: last day of birth month; last day of previous month if born on the 1st). Editable for other causes.</div>
+      </div>
+      <div class="field"><label>Cause of Claim</label>
+        <select data-f="causeOfClaim" id="f_cause"><option>SUPERANNUATION RETIREMENT</option><option>RESIGNATION</option><option>DEATH-IN-HARNESS</option><option>DISMISSAL/REMOVAL</option><option>TRANSFER OF PF ACCOUNT</option></select>
+      </div>
+      <div class="field"><label>Total Length of Service</label><input data-f="totalService" id="f_totalService" placeholder="Auto-calculated" readonly style="background:#eef1f4;color:#45566a;">
+        <div class="hint">Auto-calculated: Date of First Joining → Date of Retirement.</div>
+      </div>
+      <div class="field"><label>Qualification</label><input data-f="qualification"></div>
+      <div class="field wide"><label>Subject &amp; Group</label><input data-f="subjectGroup"></div>
+      <div class="field wide"><label>Employee Address</label><textarea data-f="employeeAddress"></textarea></div>
+      <div class="field"><label>Employee Mobile No</label><input data-f="employeeMob"></div>
+      <div class="field"><label>Employee e-mail ID</label><input data-f="employeeMail"></div>
+      <div class="field"><label>Employee Aadhaar No</label><input data-f="employeeAadhar"></div>
+      <div class="field wide"><label>Approval No &amp; Date of appointment</label><input data-f="approvalNoDate"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Pay &amp; PF Particulars</legend>
+    <div class="grid">
+      <div class="field"><label>Last Basic Pay (₹)</label><input type="number" data-f="lastBasicPay"></div>
+      <div class="field"><label>Last Grade Pay (₹)</label><input type="number" data-f="lastGradePay"></div>
+      <div class="field wide"><label>Last Pay Level / Scale</label><input data-f="lastPayLevel"></div>
+      <div class="field"><label>DA @ (%)</label><input type="number" step="0.01" data-f="daPct"></div>
+      <div class="field"><label>HRA @ (%)</label><input type="number" step="0.01" data-f="hraPct"></div>
+      <div class="field"><label>Commutation (%)</label><input type="number" step="0.01" data-f="commutationPct"></div>
+      <div class="field"><label>Last Increment Date</label><input type="date" data-f="lastIncrementDate"></div>
+      <div class="field"><label>PPO No</label><input data-f="ppoNo"></div>
+      <div class="field wide"><label>PPO Memo No / Date</label><input data-f="ppoMemoNo"></div>
+      <div class="field"><label>Month of Introduction of P.F.</label><input type="month" data-f="pfIntroMonth"></div>
+      <div class="field"><label>Month of First Deposit of P.F.</label><input type="month" data-f="pfFirstDeposit"></div>
+      <div class="field"><label>Last Month PF Contributed</label><input type="month" data-f="lastMonthContributed"></div>
+      <div class="field wide"><label>Applied Excluding Interest of the Financial Year(s)</label><input data-f="excludingFY" placeholder="e.g. 2025-26,2026-27"></div>
+      <div class="field wide"><label>Interest Upto the Financial Year Included</label><input data-f="interestUptoFY" placeholder="e.g. 2024-25"></div>
+      <div class="field"><label>Amount Claimed (Principal, ₹)</label><input type="number" data-f="amountClaimed" id="f_amountClaimed"></div>
+      <div class="field"><label>Treasury</label>
+        <select id="f_treasurySel">
+          <option value="Khatra Treasury (BAC)">Khatra Treasury (BAC)</option>
+          <option value="Bankura Treasury (BAA)">Bankura Treasury (BAA)</option>
+          <option value="__manual__">Bishnupur / Other (type manually)</option>
+        </select>
+        <input data-f="treasury" id="f_treasury" placeholder="Treasury name" style="margin-top:5px;">
+      </div>
+      <div class="field wide" style="align-self:end;"><button type="button" id="btnFetchLedger" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Excluding FY / Interest-upto FY / Amount Claimed from Ledger</button></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Sanction / Authority</legend>
+    <div class="grid">
+      <div class="field wide"><label>Application ID &amp; Date</label><input data-f="applicationId"></div>
+      <div class="field wide"><label>Sanction Admin (school + UDISE)</label><input data-f="sanctionAdmin"></div>
+      <div class="field wide"><label>Sanction ID &amp; Date</label><input data-f="sanctionId"></div>
+      <div class="field"><label>Sanctioned Amount by DPPG (₹, incl. interest)</label><input type="number" data-f="sanctionedAmount"></div>
+      <div class="field wide"><label>Final Payment Authority ID &amp; Date</label><input data-f="fpAuthorityId"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Bank Particulars</legend>
+    <div class="grid">
+      <div class="field"><label>Bank Name</label><input data-f="bankName"></div>
+      <div class="field"><label>Branch Name &amp; Code</label><input data-f="bankBranch"></div>
+      <div class="field"><label>Account No</label><input data-f="bankAcNo"></div>
+      <div class="field"><label>IFSC</label><input data-f="bankIFSC"></div>
+      <div class="field"><label>MICR</label><input data-f="bankMICR"></div>
+      <div class="field"><label>Account Type</label>
+        <select data-f="bankAcType"><option>SAVINGS</option><option>CURRENT</option></select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Spouse / Family (for No-Liability &amp; Nomination context)</legend>
+    <div class="grid">
+      <div class="field"><label>Spouse Name</label><input data-f="spouseName"></div>
+      <div class="field"><label>Relationship</label><input data-f="spouseRel" placeholder="WIFE / HUSBAND"></div>
+      <div class="field"><label>Spouse Status</label>
+        <select id="f_spouseStatusSel">
+          <option value="HOUSEWIFE">HOUSEWIFE</option>
+          <option value="UNMARRIED">UNMARRIED</option>
+          <option value="IN-SERVICE">IN-SERVICE</option>
+          <option value="DIVORCED">DIVORCED</option>
+          <option value="__manual__">Other (type manually)</option>
+        </select>
+        <input data-f="spouseStatus" id="f_spouseStatus" placeholder="Spouse status" style="margin-top:5px;">
+      </div>
+      <div class="field"><label>Spouse DOB</label><input type="date" data-f="spouseDob"></div>
+      <div class="field wide"><label>Spouse Address</label><textarea data-f="spouseAddress"></textarea></div>
+      <div class="field"><label>Child 1 Name</label><input data-f="child1Name"></div>
+      <div class="field"><label>Child 1 Relation</label><input data-f="child1Rel" placeholder="SON / DAUGHTER"></div>
+      <div class="field"><label>Child 1 DOB</label><input type="date" data-f="child1Dob"></div>
+      <div class="field"><label>Child 2 Name</label><input data-f="child2Name"></div>
+      <div class="field"><label>Child 2 Relation</label><input data-f="child2Rel"></div>
+      <div class="field"><label>Child 2 DOB</label><input type="date" data-f="child2Dob"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Managing Committee Validity (for Validity certificate)</legend>
+    <div class="grid">
+      <div class="field"><label>MC Term Valid Upto</label><input type="date" data-f="mcValidUpto"></div>
+      <div class="field wide"><label>Delay Reason (if applicable, for Late Submission declaration)</label><input data-f="delayReason" placeholder="e.g. late submission of application by the employee due to personal problems"></div>
+    </div>
+  </fieldset>
+
+</section>
+
+<!-- ================= NOMINEE TAB ================= -->
+<section class="panel" id="panel-nominee">
+  <div class="field wide" style="margin-bottom:12px;"><button type="button" id="btnFetchNominee" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Auto-fetch Nominee 1 &amp; 2 from Main DB (Spouse / Child particulars entered in the Employee &amp; School Data tab)</button>
+    <div class="hint">Fills Nominee 1 from Spouse details and Nominee 2 from Child 1 details already entered on the Employee tab. Also auto-fills "Person to whom right shall pass on contingency" for each nominee from the Child 1 / Child 2 records (as SON or DAUGHTER, per the Relation typed on the Employee tab) — if both children are on file, both are listed with a note that the share is divided equally between them. Existing Nominee entries are overwritten — review, and edit manually, before printing.</div>
+  </div>
+  <fieldset>
+    <legend>Nominee 1</legend>
+    <div class="grid">
+      <div class="field wide"><label>Name &amp; Full Address</label><textarea data-f="nom1Address"></textarea></div>
+      <div class="field"><label>Relationship with Subscriber</label><input data-f="nom1Rel"></div>
+      <div class="field"><label>Date of Birth</label><input type="date" data-f="nom1Dob"></div>
+      <div class="field"><label>Share Payable (%)</label><input type="number" data-f="nom1Share"></div>
+      <div class="field wide"><label>Contingencies Invalidating Nomination</label><input data-f="nom1Contingency" value="DEATH, DIVORCE, RE-MARRIAGE OR INSANITY"></div>
+      <div class="field wide"><label>Person to whom right shall pass on contingency (Name, Address, Relationship)</label><textarea data-f="nom1Alt"></textarea></div>
+      <div class="field wide"><label>If nominee is not a family member, reason</label><input data-f="nom1Reason" value="N.A."></div>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Nominee 2 (optional)</legend>
+    <div class="grid">
+      <div class="field wide"><label>Name &amp; Full Address</label><textarea data-f="nom2Address"></textarea></div>
+      <div class="field"><label>Relationship with Subscriber</label><input data-f="nom2Rel"></div>
+      <div class="field"><label>Date of Birth</label><input type="date" data-f="nom2Dob"></div>
+      <div class="field"><label>Share Payable (%)</label><input type="number" data-f="nom2Share"></div>
+      <div class="field wide"><label>Contingencies Invalidating Nomination</label><input data-f="nom2Contingency"></div>
+      <div class="field wide"><label>Person to whom right shall pass on contingency</label><textarea data-f="nom2Alt"></textarea></div>
+      <div class="field wide"><label>If nominee is not a family member, reason</label><input data-f="nom2Reason"></div>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Witnesses &amp; Receipt</legend>
+    <div class="grid">
+      <div class="field"><label>Witness 1 Name &amp; Address</label><input data-f="witness1"></div>
+      <div class="field"><label>Witness 2 Name &amp; Address</label><input data-f="witness2"></div>
+      <div class="field"><label>Date of Receipt of Nomination</label><input type="date" data-f="nomReceiptDate"></div>
+      <div class="field"><label>Nomination Signed Date</label><input type="date" data-f="nomSignDate"></div>
+      <div class="field"><label>Place</label><input data-f="nomPlace"></div>
+    </div>
+  </fieldset>
+</section>
+
+<!-- ================= LEDGER TAB ================= -->
+<section class="panel" id="panel-ledger">
+  <p class="small">Interest is computed on the lowest balance credited within the 15th of the month (deposits after the 15th earn no interest for that month). Annual interest is totalled, rounded to the nearest rupee, and carried forward into the following year's opening balance — matching the LEDGER sheet in the source workbook.</p>
+  <div class="yearbar">
+    <label class="small"><b>Financial Year:</b></label>
+    <select id="fySelect"></select>
+    <button id="btnAddYear">＋ Add Financial Year</button>
+    <button id="btnDelYear" class="danger" style="background:#7a231d;color:#fff;border:none;border-radius:6px;padding:7px 10px;">🗑 Delete Year</button>
+    <label class="small">Opening Balance (₹):</label>
+    <input type="number" id="fyOpening" style="width:140px;padding:6px;border-radius:5px;border:1px solid #b9c5d1;">
+    <label class="small">Interest Rate (annual, %):</label>
+    <input type="number" id="fyRate" step="0.01" style="width:90px;padding:6px;border-radius:5px;border:1px solid #b9c5d1;">
+  </div>
+  <table class="led" id="ledgerTable">
+    <thead>
+      <tr><th>Month</th><th>Months for Which Deposited</th><th>Deposit within 15th (₹)</th><th>Deposit after 15th (₹)</th><th>Withdrawal (₹)</th><th>Challan No</th><th>Date</th><th>Cheque No &amp; Date (withdrawal)</th><th>Monthly Interest (₹)</th><th>Principal Closing (₹)</th><th>Remarks</th></tr>
+    </thead>
+    <tbody id="ledgerBody"></tbody>
+    <tfoot>
+      <tr>
+        <td>Totals</td>
+        <td></td>
+        <td id="tDepWithin">0</td><td id="tDepAfter">0</td><td id="tWithdrawal">0</td>
+        <td colspan="3">Interest (rounded)</td><td id="tInterest">0</td><td id="tClosing">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="summary">
+    <div>1. Opening Balance: <b id="sOpening">0</b></div>
+    <div>2. Total Deposit: <b id="sDeposit">0</b></div>
+    <div>3. Interest Allowed: <b id="sInterest">0</b></div>
+    <div>4. Total (Opening+Deposit+Interest): <b id="sTotal">0</b></div>
+    <div>5. Withdrawals: <b id="sWithdrawal">0</b></div>
+    <div>6. Closing Balance on 31 March: <b id="sClosing">0</b></div>
+  </div>
+</section>
+
+<!-- ================= DOCUMENTS TAB ================= -->
+<section class="panel" id="panel-documents">
+  <button class="printall" id="btnPrintAll">🖨 Preview &amp; Print Full Bundle (all documents in workbook order)</button>
+  <div class="docgrid" id="docGrid"></div>
+</section>
+
+</main>
+
+<footer class="note">Single-file, offline document generator — data is stored only in this browser's local storage (Export JSON regularly for backup). Replicates the sheet structure of PF_ALL_Final_Payment_BANKURA.xls (COVER, FL_PF Final, Form_Final, IX-A, APP_PF FINAL, Cer_NO_LIA, MCR ENG/BNG, Admn Order, Validity, Delay, Mandate, NOM, DECLARATION, LEDGER).</footer>
+
+<div id="previewWrap">
+  <div id="previewBar">
+    <button onclick="window.print()">🖨 Print</button>
+    <button onclick="closePreview()">✕ Close</button>
+  </div>
+  <div id="printArea"></div>
+</div>
+
+<script>
+/* ============================================================
+   DATA MODEL
+   ============================================================ */
+const STORE_KEY = 'gpf_final_payment_records_v1';
+let records = [];
+let currentId = null;
+
+function loadStore(){
+  try{ records = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ records = []; }
+}
+function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+
+function blankRecord(){
+  return {
+    id: 'rec_' + Date.now(),
+    schoolName:'', schoolAddress:'', schoolMailId:'', hoiMobile:'',
+    aiOfficeAddress:'', aiOfficeCode:'9999', hoiStatus:'TEACHER-IN-CHARGE', adminStatus:'President [M.C.]', presidentName:'',
+    staffName:'', staffSex:'', designation:'', employeeCode:'', pfAccNo:'', prevSchool:'',
+    dob:'', dofj:'', dojSchool:'', dor:'', causeOfClaim:'SUPERANNUATION RETIREMENT',
+    totalService:'', qualification:'', subjectGroup:'', employeeAddress:'',
+    employeeMob:'', employeeMail:'', employeeAadhar:'', approvalNoDate:'',
+    lastBasicPay:'', lastGradePay:'', lastPayLevel:'', daPct:'', hraPct:'', commutationPct:'',
+    lastIncrementDate:'', ppoNo:'', ppoMemoNo:'',
+    pfIntroMonth:'', pfFirstDeposit:'', lastMonthContributed:'', excludingFY:'', interestUptoFY:'',
+    amountClaimed:'', treasury:'',
+    applicationId:'', sanctionAdmin:'', sanctionId:'', sanctionedAmount:'', fpAuthorityId:'',
+    bankName:'', bankBranch:'', bankAcNo:'', bankIFSC:'', bankMICR:'', bankAcType:'SAVINGS',
+    spouseName:'', spouseRel:'', spouseStatus:'', spouseDob:'', spouseAddress:'',
+    child1Name:'', child1Rel:'', child1Dob:'', child2Name:'', child2Rel:'', child2Dob:'',
+    mcValidUpto:'', delayReason:'',
+    nom1Address:'', nom1Rel:'', nom1Dob:'', nom1Share:100, nom1Contingency:'DEATH, DIVORCE, RE-MARRIAGE OR INSANITY', nom1Alt:'', nom1Reason:'N.A.',
+    nom2Address:'', nom2Rel:'', nom2Dob:'', nom2Share:'', nom2Contingency:'', nom2Alt:'', nom2Reason:'',
+    witness1:'', witness2:'', nomReceiptDate:'', nomSignDate:'', nomPlace:'',
+    ledger: {} /* { "2024-25": { opening: n, rate: 7.1, months:[{within:0,after:0,wd:0,challan:'',date:''}x12] } } */
+  };
+}
+
+function currentRecord(){ return records.find(r=>r.id===currentId); }
+
+/* ============================================================
+   FORM BINDING
+   ============================================================ */
+function refreshRecordSelect(){
+  const sel = document.getElementById('recordSelect');
+  sel.innerHTML = '';
+  records.forEach(r=>{
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = (r.staffName || 'Unnamed') + ' — ' + (r.designation||'') + (r.pfAccNo? ' ['+r.pfAccNo+']':'');
+    sel.appendChild(opt);
+  });
+  if(currentId) sel.value = currentId;
+}
+
+function fillForm(){
+  const rec = currentRecord();
+  if(!rec) return;
+  document.querySelectorAll('[data-f]').forEach(el=>{
+    const key = el.getAttribute('data-f');
+    el.value = rec[key] !== undefined ? rec[key] : '';
+  });
+  buildFYSelect();
+  renderLedgerTable();
+  if(document.getElementById('f_totalService')) autoCalcService();
+  syncPresetSelect('f_treasurySel', rec.treasury, ['Khatra Treasury (BAC)','Bankura Treasury (BAA)']);
+  syncPresetSelect('f_spouseStatusSel', rec.spouseStatus, ['HOUSEWIFE','UNMARRIED','IN-SERVICE','DIVORCED']);
+}
+
+function syncPresetSelect(selectId, currentValue, knownValues){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  sel.value = knownValues.includes(currentValue) ? currentValue : '__manual__';
+}
+
+function readForm(){
+  const rec = currentRecord();
+  if(!rec) return;
+  document.querySelectorAll('[data-f]').forEach(el=>{
+    const key = el.getAttribute('data-f');
+    rec[key] = el.value;
+  });
+}
+
+document.querySelectorAll('[data-f]').forEach(el=>{
+  el.addEventListener('change', ()=>{ readForm(); });
+});
+
+/* ============================================================
+   AUTO: DATE OF RETIREMENT + TOTAL LENGTH OF SERVICE
+   ============================================================ */
+function calcDOR(dobIso){
+  if(!dobIso) return '';
+  const d = new Date(dobIso + 'T00:00:00');
+  if(isNaN(d)) return '';
+  let y = d.getFullYear() + 60, m = d.getMonth();
+  if(d.getDate() === 1){ m -= 1; if(m < 0){ m = 11; y -= 1; } }
+  const last = new Date(y, m + 1, 0); // last day of retirement month
+  const mm = String(last.getMonth()+1).padStart(2,'0'), dd = String(last.getDate()).padStart(2,'0');
+  return `${last.getFullYear()}-${mm}-${dd}`;
+}
+function calcServiceStr(fromIso, toIso){
+  if(!fromIso || !toIso) return '';
+  const from = new Date(fromIso + 'T00:00:00'), to = new Date(toIso + 'T00:00:00');
+  if(isNaN(from) || isNaN(to) || to < from) return '';
+  let y = to.getFullYear() - from.getFullYear();
+  let m = to.getMonth() - from.getMonth();
+  let d = to.getDate() - from.getDate() + 1; // inclusive day count
+  if(d <= 0){ m -= 1; const prevMonthLastDay = new Date(to.getFullYear(), to.getMonth(), 0).getDate(); d += prevMonthLastDay; }
+  if(m < 0){ y -= 1; m += 12; }
+  return `${y}Y-${m}M-${d}D`;
+}
+function autoCalcDOR(){
+  const cause = document.getElementById('f_cause').value;
+  const dob = document.getElementById('f_dob').value;
+  if(cause === 'SUPERANNUATION RETIREMENT' && dob){
+    document.getElementById('f_dor').value = calcDOR(dob);
+    readForm();
+  }
+  autoCalcService();
+}
+function autoCalcService(){
+  const dofj = document.getElementById('f_dofj').value;
+  const dor = document.getElementById('f_dor').value;
+  document.getElementById('f_totalService').value = calcServiceStr(dofj, dor);
+  readForm();
+}
+document.getElementById('f_dob').addEventListener('change', autoCalcDOR);
+document.getElementById('f_cause').addEventListener('change', autoCalcDOR);
+document.getElementById('f_dofj').addEventListener('change', autoCalcService);
+document.getElementById('f_dor').addEventListener('change', autoCalcService);
+
+/* ============================================================
+   PRESET DROPDOWN -> UNDERLYING TEXT FIELD (Treasury, Spouse Status)
+   ============================================================ */
+document.getElementById('f_treasurySel').addEventListener('change', ()=>{
+  const sel = document.getElementById('f_treasurySel'), inp = document.getElementById('f_treasury');
+  if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
+  else { inp.value=''; inp.focus(); }
+});
+document.getElementById('f_spouseStatusSel').addEventListener('change', ()=>{
+  const sel = document.getElementById('f_spouseStatusSel'), inp = document.getElementById('f_spouseStatus');
+  if(sel.value !== '__manual__'){ inp.value = sel.value; readForm(); }
+  else { inp.value=''; inp.focus(); }
+});
+
+/* ============================================================
+   AUTO-FETCH EXCLUDING FY / INTEREST-UPTO FY / AMOUNT CLAIMED FROM LEDGER
+   ============================================================ */
+document.getElementById('btnFetchLedger').addEventListener('click', ()=>{
+  const rec = currentRecord(); if(!rec) return;
+  readForm();
+  const fys = fyList(rec);
+  if(!fys.length){ alert('No ledger years have been entered yet. Add a Financial Year in the GPF Ledger & Interest tab first.'); return; }
+  const lastFY = fys[fys.length-1];
+  const prevFY = fys.length > 1 ? fys[fys.length-2] : '';
+  rec.excludingFY = lastFY;
+  rec.interestUptoFY = prevFY;
+  const calc = computeYearTotals(rec.ledger[lastFY], lastFY, rec.dor);
+  rec.amountClaimed = calc.rows[11].closing; // principal closing balance as of March (or last month with data)
+  saveStore(); fillForm();
+  alert(`Fetched from ledger:\nAmount Claimed (Principal) = ₹${fmtNum(rec.amountClaimed)}\nInterest upto FY: ${prevFY || '— (none)'}\nExcluding Interest of FY: ${lastFY}\n\nPlease verify against the ledger before printing.`);
+});
+
+/* ============================================================
+   AUTO-FETCH NOMINEE 1 & 2 FROM MAIN DB (Spouse / Child particulars
+   already entered in the Employee & School Data tab)
+   ============================================================ */
+document.getElementById('btnFetchNominee').addEventListener('click', ()=>{
+  const rec = currentRecord(); if(!rec) return;
+  readForm();
+  if(!rec.spouseName && !rec.child1Name){
+    alert('No Spouse or Child particulars found on the Employee & School Data tab yet. Fill in the Spouse / Family fieldset first.');
+    return;
+  }
+
+  // Normalise a child's relation to SON / DAUGHTER (falls back to whatever was typed, or a placeholder)
+  function relLabel(rel){
+    const r = (rel||'').trim().toUpperCase();
+    if(r.startsWith('S')) return 'SON';
+    if(r.startsWith('D')) return 'DAUGHTER';
+    return r || 'SON/DAUGHTER';
+  }
+
+  // Every child on file (from the Employee & School Data tab), in order
+  const children = [];
+  if(rec.child1Name) children.push({name: rec.child1Name, rel: relLabel(rec.child1Rel)});
+  if(rec.child2Name) children.push({name: rec.child2Name, rel: relLabel(rec.child2Rel)});
+
+  // Build the "Person to whom right shall pass on contingency (Name, Address, Relationship)" text
+  // for a given list of children. When more than one child is on file, all are listed and a note
+  // is added that the share is to be divided equally among them — this text can still be edited
+  // by hand afterwards.
+  function altText(list){
+    if(!list.length) return '';
+    const parts = list.map(c => `${c.name}, ${rec.employeeAddress||''} (${c.rel})`.trim());
+    return list.length > 1
+      ? parts.join(' ; ') + ' — share on contingency to be divided equally among the above'
+      : parts[0];
+  }
+
+  if(rec.spouseName){
+    const spouseAddr = [rec.spouseName, rec.spouseAddress || rec.employeeAddress].filter(Boolean).join(', ');
+    rec.nom1Address = spouseAddr;
+    rec.nom1Rel = rec.spouseRel || '';
+    rec.nom1Dob = rec.spouseDob || '';
+    rec.nom1Share = rec.child1Name ? 50 : 100;
+    // If the spouse's nomination is invalidated, the right passes to the son(s)/daughter(s) on file
+    rec.nom1Alt = altText(children);
+  }
+  if(rec.child1Name){
+    const childAddr = [rec.child1Name, rec.employeeAddress].filter(Boolean).join(', ');
+    rec.nom2Address = childAddr;
+    rec.nom2Rel = rec.child1Rel || '';
+    rec.nom2Dob = rec.child1Dob || '';
+    rec.nom2Share = rec.spouseName ? 50 : 100;
+    // Alternate for Nominee 2: any other child on file; otherwise the spouse
+    const otherChildren = children.filter(c => c.name !== rec.child1Name);
+    if(otherChildren.length){
+      rec.nom2Alt = altText(otherChildren);
+    } else if(rec.spouseName){
+      rec.nom2Alt = `${rec.spouseName}, ${(rec.spouseAddress || rec.employeeAddress || '').trim()} (${rec.spouseRel || 'SPOUSE'})`.trim();
+    }
+  }
+  saveStore(); fillForm();
+  alert('Nominee 1 filled from Spouse and Nominee 2 filled from Child 1 particulars, including the "Person to whom right shall pass on contingency" field (son/daughter, with equal-share note if more than one). Please review — and edit manually if needed — before printing.');
+});
+
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+   RECORD CRUD
+   ============================================================ */
+document.getElementById('btnNew').addEventListener('click', ()=>{
+  const rec = blankRecord();
+  records.push(rec);
+  currentId = rec.id;
+  saveStore(); refreshRecordSelect(); fillForm();
+});
+document.getElementById('btnSave').addEventListener('click', ()=>{
+  readForm(); saveStore(); refreshRecordSelect();
+  alert('Record saved to browser storage.');
+});
+document.getElementById('btnDelete').addEventListener('click', ()=>{
+  if(!currentId) return;
+  if(!confirm('Delete this record permanently?')) return;
+  records = records.filter(r=>r.id!==currentId);
+  currentId = records.length? records[0].id : null;
+  saveStore(); refreshRecordSelect();
+  if(currentId) fillForm();
+});
+document.getElementById('recordSelect').addEventListener('change', (e)=>{
+  currentId = e.target.value; fillForm();
+});
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(records,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'gpf_final_payment_records.json';
+  a.click();
+});
+document.getElementById('btnImport').addEventListener('click', ()=> document.getElementById('fileImport').click());
+document.getElementById('fileImport').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const incoming = JSON.parse(reader.result);
+      if(Array.isArray(incoming)){
+        records = records.concat(incoming);
+        saveStore(); refreshRecordSelect();
+        alert('Imported ' + incoming.length + ' record(s).');
+      }
+    }catch(err){ alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ============================================================
+   LEDGER
+   ============================================================ */
+const MONTH_SEQ = ['April','May','June','July','August','September','October','November','December','January','February','March'];
+
+function fyList(rec){ return Object.keys(rec.ledger).sort(); }
+
+function buildFYSelect(){
+  const rec = currentRecord(); if(!rec) return;
+  const sel = document.getElementById('fySelect');
+  sel.innerHTML='';
+  fyList(rec).forEach(fy=>{
+    const opt=document.createElement('option'); opt.value=fy; opt.textContent=fy; sel.appendChild(opt);
+  });
+  if(sel.options.length){ sel.value = sel.options[0].value; }
+  loadYearIntoInputs();
+}
+
+document.getElementById('fySelect').addEventListener('change', loadYearIntoInputs);
+
+function loadYearIntoInputs(){
+  const rec = currentRecord(); if(!rec) return;
+  const fy = document.getElementById('fySelect').value;
+  const y = rec.ledger[fy];
+  if(!y){ renderLedgerTable(); return; }
+  document.getElementById('fyOpening').value = y.opening;
+  document.getElementById('fyRate').value = y.rate;
+  renderLedgerTable();
+}
+
+document.getElementById('fyOpening').addEventListener('change', ()=>{
+  const rec = currentRecord(); const fy = document.getElementById('fySelect').value;
+  if(rec && rec.ledger[fy]){ rec.ledger[fy].opening = parseFloat(document.getElementById('fyOpening').value)||0; saveStore(); renderLedgerTable(); }
+});
+document.getElementById('fyRate').addEventListener('change', ()=>{
+  const rec = currentRecord(); const fy = document.getElementById('fySelect').value;
+  if(rec && rec.ledger[fy]){ rec.ledger[fy].rate = parseFloat(document.getElementById('fyRate').value)||0; saveStore(); renderLedgerTable(); }
+});
+
+document.getElementById('btnAddYear').addEventListener('click', ()=>{
+  const rec = currentRecord(); if(!rec) return;
+  const fy = prompt('Enter Financial Year (e.g. 2024-25):'); if(!fy) return;
+  if(rec.ledger[fy]){ alert('That FY already exists.'); return; }
+  const existingYears = fyList(rec);
+  let opening = 0;
+  if(existingYears.length){
+    const prevFY = existingYears[existingYears.length-1];
+    opening = computeYearTotals(rec.ledger[prevFY], prevFY, rec.dor).closingWithInterest;
+  }
+  rec.ledger[fy] = { opening: opening, rate: 7.1, months: Array.from({length:12},()=>({within:0, after:0, wd:0, challan:'', date:'', monthsFor:'', chequeNo:'', remarks:''})) };
+  saveStore(); buildFYSelect();
+  document.getElementById('fySelect').value = fy;
+  loadYearIntoInputs();
+});
+document.getElementById('btnDelYear').addEventListener('click', ()=>{
+  const rec = currentRecord(); if(!rec) return;
+  const fy = document.getElementById('fySelect').value; if(!fy) return;
+  if(!confirm('Delete ledger year '+fy+'?')) return;
+  delete rec.ledger[fy];
+  saveStore(); buildFYSelect();
+});
+
+function fyStartYear(fy){ return parseInt((fy||'').split('-')[0], 10); }
+function fyOfDate(dateIso){
+  if(!dateIso) return null;
+  const d = new Date(dateIso + 'T00:00:00');
+  if(isNaN(d)) return null;
+  const y = d.getFullYear(), m = d.getMonth(); // 0=Jan
+  const startYear = (m >= 3) ? y : y - 1; // Financial Year starts in April
+  return `${startYear}-${String((startYear+1)%100).padStart(2,'0')}`;
+}
+function monthIndexInFY(dateIso){
+  // 0=April .. 11=March, matching MONTH_SEQ
+  const d = new Date(dateIso + 'T00:00:00');
+  const m = d.getMonth();
+  return (m >= 3) ? (m - 3) : (m + 9);
+}
+
+function computeYearTotals(y, fy, dorIso){
+  let opening = y.opening;
+  let totalWithin=0, totalAfter=0, totalWd=0, totalInterest=0;
+  const rows = [];
+  const retFY = dorIso ? fyOfDate(dorIso) : null;
+  const retIdx = dorIso ? monthIndexInFY(dorIso) : null;
+  let interestCutoff = 11; // default: full year (March, index 11)
+  if(retFY && fy){
+    if(fyStartYear(fy) > fyStartYear(retFY)) interestCutoff = -1; // entire FY is after retirement: no interest
+    else if(fy === retFY) interestCutoff = retIdx; // stop after the retirement month (inclusive)
+  }
+  y.months.forEach((m,i)=>{
+    const within = parseFloat(m.within)||0, after = parseFloat(m.after)||0, wd = parseFloat(m.wd)||0;
+    const base = opening + within - wd;
+    // Interest is always rounded off to 0 decimals (nearest whole rupee).
+    const autoInterest = (i <= interestCutoff) ? Math.round(base * (y.rate/100) / 12) : 0;
+    const hasOverride = (m.interestOverride !== undefined && m.interestOverride !== null && m.interestOverride !== '');
+    const interest = (i <= interestCutoff) ? (hasOverride ? Math.round(parseFloat(m.interestOverride)) || 0 : autoInterest) : 0;
+    const closing = opening + within + after - wd;
+    rows.push({opening, within, after, wd, interest, autoInterest, closing});
+    totalWithin += within; totalAfter += after; totalWd += wd; totalInterest += interest;
+    opening = closing;
+  });
+  const roundedInterest = Math.round(totalInterest);
+  const totalDeposit = totalWithin + totalAfter;
+  const closingWithInterest = y.opening + totalDeposit - totalWd + roundedInterest;
+  return {rows, totalWithin, totalAfter, totalWd, totalDeposit, totalInterest: roundedInterest, closingWithInterest};
+}
+
+function renderLedgerTable(){
+  const rec = currentRecord(); if(!rec) return;
+  const fy = document.getElementById('fySelect').value;
+  const tbody = document.getElementById('ledgerBody');
+  tbody.innerHTML = '';
+  const y = rec.ledger[fy];
+  if(!y){
+    document.getElementById('tDepWithin').textContent='0'; document.getElementById('tDepAfter').textContent='0';
+    document.getElementById('tWithdrawal').textContent='0'; document.getElementById('tInterest').textContent='0'; document.getElementById('tClosing').textContent='0';
+    ['sOpening','sDeposit','sInterest','sTotal','sWithdrawal','sClosing'].forEach(id=>document.getElementById(id).textContent='0');
+    return;
+  }
+  const calc = computeYearTotals(y, fy, rec.dor);
+  MONTH_SEQ.forEach((label, i)=>{
+    const m = y.months[i];
+    const row = calc.rows[i];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${label}</td>
+      <td><input type="text" value="${m.monthsFor||''}" placeholder="${label}" data-i="${i}" data-k="monthsFor"></td>
+      <td><input type="number" value="${m.within}" data-i="${i}" data-k="within"></td>
+      <td><input type="number" value="${m.after}" data-i="${i}" data-k="after"></td>
+      <td><input type="number" value="${m.wd}" data-i="${i}" data-k="wd"></td>
+      <td><input type="text" value="${m.challan}" data-i="${i}" data-k="challan"></td>
+      <td><input type="date" value="${m.date}" data-i="${i}" data-k="date"></td>
+      <td><input type="text" value="${m.chequeNo||''}" placeholder="Cheque No &amp; Date" data-i="${i}" data-k="chequeNo"></td>
+      <td><input type="number" step="1" title="Auto: ${row.autoInterest} — edit to override, rounded to 0 decimals" value="${row.interest}" data-i="${i}" data-k="interestOverride"></td>
+      <td>${fmtNum(row.closing)}</td>
+      <td><input type="text" value="${m.remarks||''}" data-i="${i}" data-k="remarks"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', (e)=>{
+      const i = e.target.getAttribute('data-i'), k = e.target.getAttribute('data-k');
+      y.months[i][k] = e.target.value;
+      saveStore(); renderLedgerTable();
+    });
+  });
+  document.getElementById('tDepWithin').textContent = fmtNum(calc.totalWithin);
+  document.getElementById('tDepAfter').textContent = fmtNum(calc.totalAfter);
+  document.getElementById('tWithdrawal').textContent = fmtNum(calc.totalWd);
+  document.getElementById('tInterest').textContent = fmtNum(calc.totalInterest);
+  document.getElementById('tClosing').textContent = fmtNum(calc.rows.length? calc.rows[calc.rows.length-1].closing : y.opening);
+
+  document.getElementById('sOpening').textContent = fmtNum(y.opening);
+  document.getElementById('sDeposit').textContent = fmtNum(calc.totalDeposit);
+  document.getElementById('sInterest').textContent = fmtNum(calc.totalInterest);
+  document.getElementById('sTotal').textContent = fmtNum(y.opening + calc.totalDeposit + calc.totalInterest);
+  document.getElementById('sWithdrawal').textContent = fmtNum(calc.totalWd);
+  document.getElementById('sClosing').textContent = fmtNum(calc.closingWithInterest);
+}
+
+function fmtNum(n){ return (Math.round((n||0)*100)/100).toLocaleString('en-IN'); }
+
+/* ============================================================
+   NUMBER TO WORDS (Indian numbering system)
+   ============================================================ */
+const ONES = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const TENS = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+function belowHundred(n){
+  if(n < 20) return ONES[n];
+  const t = Math.floor(n/10), o = n%10;
+  return TENS[t] + (o? ONES[o] : '');
+}
+function belowThousand(n){
+  let parts = [];
+  const h = Math.floor(n/100), r = n%100;
+  if(h){ parts.push(ONES[h] + ' Hundred'); }
+  if(r){ parts.push(belowHundred(r)); }
+  return parts.join(' ');
+}
+function numberToWords(num){
+  num = Math.round(Math.abs(num||0));
+  if(num === 0) return 'Zero Only';
+  const crore = Math.floor(num/10000000); num %= 10000000;
+  const lakh = Math.floor(num/100000); num %= 100000;
+  const thousand = Math.floor(num/1000); num %= 1000;
+  const rest = num;
+  let parts = [];
+  if(crore) parts.push(belowHundred(crore) + ' Crore');
+  if(lakh) parts.push(belowHundred(lakh) + ' Lakh');
+  if(thousand) parts.push(belowHundred(thousand) + ' Thousand');
+  if(rest) parts.push(belowThousand(rest));
+  return parts.join(' ') + ' Only';
+}
+
+/* ============================================================
+   DATE / TEXT HELPERS
+   ============================================================ */
+function fmtDate(iso){
+  if(!iso) return '_ _ / _ _ / _ _ _ _';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return iso;
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}-${mm}-${d.getFullYear()}`;
+}
+function fmtMonthYear(iso){
+  if(!iso) return '';
+  const [y,m] = iso.split('-');
+  const names=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return names[parseInt(m,10)-1] + ' - ' + y;
+}
+function money(n){ return '₹ ' + fmtNum(n); }
+function esc(s){ return (s===undefined||s===null) ? '' : String(s); }
+/* Wraps prominent personal/particulars data (names, dates, amounts, IDs) in bold
+   so it stands out from the surrounding boilerplate letter text. */
+function B(html){ return `<b>${html}</b>`; }
+
+/* ============================================================
+   PRONOUNS — derived from Sex of Staff (MALE/FEMALE); falls
+   back to the neutral he/she form when Sex of Staff is blank.
+   ============================================================ */
+function pron(rec, key){
+  const sex = String(rec.staffSex||'').toUpperCase();
+  const isM = sex === 'MALE', isF = sex === 'FEMALE';
+  const map = {
+    heShe:    isM ? 'he'  : isF ? 'she' : 'he/she',
+    HeShe:    isM ? 'He'  : isF ? 'She' : 'He/She',
+    hisHer:   isM ? 'his' : isF ? 'her' : 'his/her',
+    HisHer:   isM ? 'His' : isF ? 'Her' : 'His/Her',
+    himHer:   isM ? 'him' : isF ? 'her' : 'him/her',
+    sriSmt:   isM ? 'Sri' : isF ? 'Smt.' : 'Sri/Smt',
+    mrMrs:    isM ? 'Mr.' : isF ? 'Mrs./Ms.' : 'Mr./Mrs./Ms.',
+    bnMohashoy: isM ? 'মহাশয়' : isF ? 'মহাশয়া' : 'মহাশয়/মহাশয়া'
+  };
+  return map[key] !== undefined ? map[key] : '';
+}
+
+/* ============================================================
+   LETTERHEAD / PAGE WRAP
+   ============================================================ */
+function letterhead(rec){
+  return `
+  <div class="lh-top">
+    <div class="lh-school">${esc(rec.schoolName).toUpperCase()}</div>
+    <div class="lh-addr">${esc(rec.schoolAddress)}</div>
+    <div class="lh-meta">e-mail: ${esc(rec.schoolMailId)} &nbsp;|&nbsp; Contact: ${esc(rec.hoiMobile)} (HOI)</div>
+  </div>`;
+}
+function pageWrap(rec, titleHtml, bodyHtml){
+  return `<div class="docpage">${letterhead(rec)}${titleHtml}<div class="doc-body">${bodyHtml}</div></div>`;
+}
+/* No school letterhead — used for the employee's own Personal Application,
+   which is addressed to the school, not issued on the school's behalf. */
+function pageWrapNoLetterhead(rec, titleHtml, bodyHtml){
+  return `<div class="docpage">${titleHtml}<div class="doc-body">${bodyHtml}</div></div>`;
+}
+function sigRow(rec, leftDesig, rightDesig){
+  return `<div class="sig-row">
+    <div class="sig-block"><div class="sig-line"></div>${esc(leftDesig)}</div>
+    <div class="sig-block"><div class="sig-line"></div>${esc(rightDesig)}</div>
+  </div>`;
+}
+/* Strict right-aligned single signature block (Application / Forwarding Letter HOI). */
+function sigRight(desigHtml){
+  return `<div class="sig-row" style="justify-content:flex-end;">
+    <div class="sig-block"><div class="sig-line"></div>${desigHtml}</div>
+  </div>`;
+}
+
+/* ============================================================
+   DOCUMENT GENERATORS  (one function per workbook sheet)
+   ============================================================ */
+function retDateStr(rec){
+  return fmtDate(rec.dor) + ' (a.n.) due to ' + esc(rec.causeOfClaim);
+}
+function amountClaimedNumRounded(rec){ return Math.round(parseFloat(rec.amountClaimed)||0); }
+
+function docCOVER(rec){
+  const block = `
+    <div class="watermark-cover">
+      <div class="cover-meta">e-mail ID: ${esc(rec.schoolMailId)}</div>
+      <div class="cover-meta">Contact No. ${esc(rec.hoiMobile)} (HOI)</div>
+      <div class="cover-school" style="margin-top:10px;">${esc(rec.schoolName).toUpperCase()}</div>
+      <div class="cover-addr">${esc(rec.schoolAddress)}</div>
+      <div class="cover-title">FINAL PAYMENT<br>FROM P.F. A/C OF</div>
+      <div class="cover-name">${B(esc(rec.staffName).toUpperCase())}; ${esc(rec.designation).toUpperCase()}</div>
+      <div class="cover-meta" style="margin-top:10px;">NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</div>
+      <div class="cover-meta">[is to be retired on ${B(retDateStr(rec))}]</div>
+      <div class="cover-meta">MOBILE NO OF THE INCUMBENT: ${B(esc(rec.employeeMob))}</div>
+    </div>`;
+  return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
+}
+
+function flpfEnclosures(rec){
+  const isKhatra = /khatra/i.test(rec.aiOfficeAddress||'');
+  if(isKhatra){
+    return ['1. Incumbent\'s application',
+      '2. Filled up prescribed application for final payment of P.F.',
+      '3. Filled up Form IX-A with declaration.',
+      '4. Copy of Application ID',
+      '5. Copy of Sanction Order',
+      '6. Copy of Final Payment Authority',
+      '7. Approval(s) of appointment of Incumbent.',
+      '8. Certificate regarding D.O.B. / Copy of PPO',
+      '9. No objection &amp; No liabilities certificate.',
+      '10. Resolution copy adopted by M.C./Administrator Order regarding final payment of PF.',
+      '11. Validity of M.C./Administrator',
+      '12. Pay Slip for the Last month in which PF deducted.'].join('<br>');
+  }
+  return ['1. Forwarding letter by HOI',
+    '2. Sanctioned order (2 Copies)',
+    '3. Online Application (1 copy)',
+    '4. PF Statement of current F.Y.',
+    '5. Payment authority code issued by DPPG (2 copies)',
+    '6. Nomination Form',
+    '7. Non-overdrawal certificate'].join('<br>');
+}
+
+function docFLPF(rec){
+  const title = `<div class="doc-ref">To<br>The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}]<br>${esc(rec.aiOfficeAddress)}</div>`;
+  const body = `
+    <p><b>Subject:</b> Final Payment from P.F. A/C of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, is to be retired from service on ${esc(rec.causeOfClaim).toLowerCase()} with effect from ${B(retDateStr(rec))}.</p>
+    <p><b>Ref:</b> NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</p>
+    <p>Sir,</p>
+    <p>With due respect, I beg to state that ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, is to be retired from service with effect from ${B(retDateStr(rec))} after rendering long and satisfactory service under this institution.</p>
+    <p>It is respectfully submitted that the Application for Final Payment of Provident Fund bearing Application ID ${B(esc(rec.applicationId))} has been duly processed and sanctioned vide Sanction ID ${B(esc(rec.sanctionId))} by the sanctioning admin ${esc(rec.sanctionAdmin)}. Further, the Directorate of Pension, Provident Fund &amp; Group Insurance has issued the Final Payment Authority bearing Authority ID ${B(esc(rec.fpAuthorityId))}, authorising The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}] to draw the sanctioned amount ${B(money(rec.sanctionedAmount))} [Principal: ${B(money(rec.amountClaimed))}, Interest: ${money((parseFloat(rec.sanctionedAmount)||0)-(parseFloat(rec.amountClaimed)||0))}] through ${esc(rec.treasury)}.</p>
+    <p>In view of the above facts and approval accorded by the competent authority, I most respectfully request you to be kind enough to take necessary action for release and drawal of the sanctioned Provident Fund Final Payment amount at an early date, so that the admissible dues of the retired employee may be disbursed without further delay.</p>
+    <p>All relevant sanction orders, Final Payment Authority and connected documents are enclosed herewith for your kind perusal and necessary action.</p>
+    <p>I shall remain obliged for your kind cooperation in this matter.</p>
+    <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>
+    <p><b>Enclosures:</b><br>${flpfEnclosures(rec)}</p>`;
+  return pageWrap(rec, title, body) .replace('</div></div>', `${sigRight(esc(rec.hoiStatus))}</div></div>`);
+}
+
+function docFormFinal(rec){
+  const title = `<div class="doc-title">Particulars in Connection with the Prayer<br>for Final Payment from the Provident Fund</div>
+    <div class="doc-ref">NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</div>`;
+  const words = numberToWords(amountClaimedNumRounded(rec));
+  const body = `
+  <table class="formtbl">
+    <tr><th style="width:38%">1. Name of the incumbent with Designation</th><td>${B(esc(rec.staffName))} ; ${B(esc(rec.designation))}</td></tr>
+    <tr><th>2. Date of Appointment</th><td>${B(fmtDate(rec.dofj))}</td></tr>
+    <tr><th>3. Date of introduction of P.F. / C.P.F</th><td>${fmtMonthYear(rec.pfIntroMonth)}</td></tr>
+    <tr><th>4. Period of Contribution</th><td>From ${fmtMonthYear(rec.pfFirstDeposit)} To ${fmtMonthYear(rec.lastMonthContributed)}</td></tr>
+    <tr><th>5. Total amount of employee's share together with accrued interest (balance position as on the date of final payment)</th>
+        <td>${B(money(rec.amountClaimed))}<br>[Rupees ${B(words)}] (Included interest upto the F.Y. ${esc(rec.interestUptoFY)} i.e. excluding interest part of F.Y. ${esc(rec.excludingFY)}.)</td></tr>
+    <tr><th>6. Total amount of Employer's share of C.P.F. together with accrued interest (those who have opted for CPF-cum-Gratuity)</th><td>****</td></tr>
+    <tr><th>7(i). Opted for coming under DCRB scheme</th><td>Pension including Family Pension cum Gratuity</td></tr>
+    <tr><th>7(ii). Date of exercise of option</th><td>****</td></tr>
+    <tr><th>7(iii). Date of Retirement / Death, etc.</th><td>${B(retDateStr(rec))}</td></tr>
+  </table>
+  <p>Certified that the claim for Final Payment is made as per rule 7 of the West Bengal Non-Govt. Educational Institution and Local Authorities' Control of P.F. of Employees Rules, 1984 and that the amount claimed for payment has been properly calculated from the relevant papers/records. It is so declared that if the amount which may be paid to the payee is on or after-wards found to be in excess of that to which ${pron(rec,'heShe')} is actually entitled, ${pron(rec,'heShe')} will refund the excess amount forthwith on demand.</p>
+  <p>Certified also that ${pron(rec,'heShe')} has no liability to the school.</p>
+  <p>Place: ${esc(rec.schoolName)}</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `
+    <div class="sig-row">
+      <div></div>
+      <div class="sig-block"><div class="sig-line"></div>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>${B(esc(rec.designation))}<br>${esc(rec.schoolName)}</div>
+    </div>
+    <p style="text-align:center;font-weight:700;margin-top:30px;">C O U N T E R S I G N E D</p>
+    ${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}
+  </div></div>`);
+}
+
+function docIXA(rec){
+  const title = `<div class="doc-title">Form: IX-A</div>
+    <div class="doc-ref">To<br>The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}]<br>${esc(rec.aiOfficeAddress)}</div>`;
+  const body = `
+  <p>Sir,</p>
+  <p>My total length of service stands at ${B(esc(rec.totalService))}${rec.prevSchool ? ', including prior service rendered at ' + esc(rec.prevSchool) : ''}, reckoned from ${B(fmtDate(rec.dofj))} to ${B(fmtDate(rec.dor))}.</p>
+  <p>I am to inform you that</p>
+  <p>1. I am due to retire / have been retired from service with effect from ${B(retDateStr(rec))}.</p>
+  <p>2. I have resigned finally from service in _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of the institution) with effect from _ _ _ _ _ _ _ _ _ .</p>
+  <p>3. I have been dismissed from service with effect from _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ and my resignation has been accepted w.e.f. _ _ _ _ _ _ _ .</p>
+  <p>Necessary steps for Final Payment of balance standing at my credit in my GPF account may be made at the earliest convenience.</p>
+  <p style="text-align:center;font-weight:700;">OR</p>
+  <p>I have been appointed as _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name and address of the institution) with effect from _ _ _ _ _ _ _ _ _ _ _ which comes under the jurisdiction of _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of authorised officer). Necessary steps may please be taken for transfer of the balance including interest standing at the credit of my General Provident Fund Account Number ${B(esc(rec.pfAccNo))} allotted in my present employment in _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of the institution).</p>
+  <p style="margin-top:44px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>${B(esc(rec.designation))}<br>Address: ${esc(rec.employeeAddress)}</p>
+  <p style="text-align:center;font-weight:700;margin-top:20px;">C O U N T E R S I G N E D</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docAPP(rec){
+  const title = `<div class="doc-ref">To<br>The ${esc(rec.adminStatus)}<br>${esc(rec.schoolName)}<br>${esc(rec.schoolAddress)}<br><br>Through<br>The ${esc(rec.hoiStatus)}<br>${esc(rec.schoolName)}<br>${esc(rec.schoolAddress)}</div>
+    <div class="doc-title" style="font-size:12.5px;text-decoration:none;">Subject: Prayer for making Final Payment from my own contribution to the G.P.F. including up to date accrued interest admissible as per rule.</div>
+    <div class="doc-ref">Ref: Employee ID: ${B(esc(rec.employeeCode))} ; PF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
+  const body = `
+  <p>Sir,</p>
+  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, have been serving in the post of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>My total length of service, reckoned from ${B(fmtDate(rec.dofj))} to ${B(fmtDate(rec.dor))}, stands at ${B(esc(rec.totalService))}${rec.prevSchool ? ', inclusive of prior service rendered at ' + esc(rec.prevSchool) : ''}.</p>
+  <p>It may also be mentioned for your kind information that I have no liabilities in this school either in cash or kind.</p>
+  <p>Hence you are requested to take necessary steps for making Final Payment from my own contribution to the G.P.F. including up to date accrued interest admissible as per rule, standing at credit in my GPF account.</p>
+  <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>
+  <p>Date: _ _ _ _ _ _ _ _ _ _ _<br>Place: _ _ _ _ _ _ _ _ _ _ _</p>
+  <p style="text-align:right;margin-top:14px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>${B(esc(rec.staffName))}<br>${B(esc(rec.designation))}<br>${esc(rec.schoolName)}</p>
+  <p style="text-align:center;font-weight:700;margin-top:20px;">A C C E P T E D</p>`;
+  const doc = pageWrapNoLetterhead(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docNoLiability(rec){
+  const title = `<div class="doc-title">Certificate Regarding No Liability</div>
+    <div class="doc-ref">To whom it may concern<br>Ref: Employee ID: ${B(esc(rec.employeeCode))} ; NGIPF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
+  const body = `
+  <p>Certified that -</p>
+  <p>The subscriber ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, who is due to retire from ${pron(rec,'hisHer')} service on ${B(fmtDate(rec.dor))} (a.n.), will not raise any objection in connection with the Final Payment from ${pron(rec,'hisHer')} own contribution to the G.P.F. including up to date accrued interest admissible as per rule.</p>
+  <p>Further verification confirms that ${B(esc(rec.staffName))} holds no liabilities, whether in cash or kind, to the school or to the office of the A.I. of Schools (S.E.), ${esc(rec.aiOfficeAddress)}. There are no instances of salary overdrawal, nor is there any outstanding recovery against loans or advances from ${pron(rec,'hisHer')} GPF account. Additionally, there are no court cases or litigation pending against ${pron(rec,'himHer')} in connection with ${pron(rec,'hisHer')} service.</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docMCREng(rec){
+  const words = numberToWords(amountClaimedNumRounded(rec));
+  const title = `<div class="doc-title">Resolution of the Managing Committee<br>Regarding Final Payment of GPF to ${B(esc(rec.staffName))}</div>`;
+  const body = `
+  <p>In the meeting of the Managing Committee, an application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} was placed for consideration. The application pertains to the Final Payment of ${pron(rec,'hisHer')} General Provident Fund (GPF) on account of ${pron(rec,'hisHer')} forthcoming ${esc(rec.causeOfClaim).toLowerCase()} on the afternoon of ${B(fmtDate(rec.dor))}. Upon thorough examination of the relevant records and documents, it has been verified that ${B(esc(rec.staffName))} has been serving in the capacity of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)}, against a permanent post in this institution ${esc(rec.schoolName)}, since ${B(fmtDate(rec.dofj))}, without any break in service. ${pron(rec,'HisHer')} appointment was duly approved vide Memo No. ${B(esc(rec.approvalNoDate))}.</p>
+  <p>Further verification confirms that ${B(esc(rec.staffName))} holds no liabilities, whether in cash or kind, to the school or to the office of the A.I. of Schools (S.E.), ${esc(rec.aiOfficeAddress)}. There are no instances of salary overdrawal, nor is there any outstanding recovery against loans or advances from ${pron(rec,'hisHer')} GPF account. Additionally, there are no court cases or litigation pending against ${pron(rec,'himHer')} in connection with ${pron(rec,'hisHer')} service.</p>
+  <p>In light of the above, the Managing Committee unanimously approves and resolves to sanction the Final Payment of GPF in favour of ${B(esc(rec.staffName))}, in accordance with existing rules.</p>
+  <p>It is also hereby observed that, after excluding interest for the financial year(s) ${esc(rec.excludingFY)}, an amount of ${B(money(rec.amountClaimed))} [Rupees ${B(words)}] remains credited in ${pron(rec,'hisHer')} GPF account, inclusive of interest accrued up to the financial year ${esc(rec.interestUptoFY)}.</p>
+  <p>It is further resolved, unanimously, to authorise the ${esc(rec.hoiStatus)} of the school to take all necessary steps and make appropriate arrangements for online submission through the NGIPF module and other required formalities in this regard.</p>
+  <p>There being no other item to discuss, the meeting was concluded with a vote of thanks to the Chair.</p>`;
+  return pageWrap(rec, title, body);
+}
+
+function docMCRBng(rec){
+  const words = numberToWords(amountClaimedNumRounded(rec));
+  const title = `<div class="doc-title bn">প্রসঙ্গ: ${B(esc(rec.staffName))}-এর জি.পি.এফ. Final Payment সংক্রান্ত পরিচালন সমিতির সিদ্ধান্ত</div>`;
+  const body = `<div class="bn">
+  <p>পরিচালন সমিতির সভাপতি মাননীয়/মাননীয়া __________________ মহাশয়/মহাশয়া অদ্য সভায় সভাপতির আসন গ্রহণ করলে সভার কার্যক্রম শুরু হয়।</p>
+  <p>বিদ্যালয়ের পরিচালন সমিতির আজকের এই সভায় বিদ্যালয়ের ${B(esc(rec.designation))} মাননীয়/মাননীয়া ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')}-এর পেশ করা ভবিষ্যনিধি তহবিল (GPF) থেকে Final Payment অনুমোদন সংক্রান্ত বিষয়ক আবেদনটি বিবেচনার জন্য বিদ্যালয়ের মাননীয়/মাননীয়া ${esc(rec.hoiStatus)} মহাশয়/মহাশয়া উপস্থাপন করলে দেখা গেল ${B(esc(rec.staffName))} ${pron(rec,'bnMohashoy')} আগামী ${B(fmtDate(rec.dor))} তারিখ বিকেলে তাঁর দীর্ঘ চাকুরি জীবন থেকে অবসর গ্রহণ (${esc(rec.causeOfClaim)}) করবেন। এই প্রেক্ষিতে বিষয়টি বিশদভাবে পরীক্ষা-নিরীক্ষা করে দেখা যায় যে, মাননীয়/মাননীয়া ${B(esc(rec.staffName))} বিদ্যালয়ের স্থায়ী পদে ${B(esc(rec.designation))} হিসাবে বিষয়: ${esc(rec.subjectGroup)} গত ${B(fmtDate(rec.dofj))} তারিখে যোগদান করে নিরবিচ্ছিন্ন ও সন্তোষজনক ভাবে চাকুরি করে চলেছেন ও তাঁর নিয়োগ যথাযথভাবে অনুমোদিত (মেমো নং ${B(esc(rec.approvalNoDate))})।</p>
+  <p>উপরোক্ত বিবেচনায় বর্তমান নিয়ম অনুসারে মাননীয়/মাননীয়া ${B(esc(rec.staffName))} মহাশয়ের/মহাশয়ার ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত সুদ সহ মোট প্রাপ্য টাকা তাঁর অনুকূলে মঞ্জুর ও প্রদানের জন্য বিদ্যালয়ের পরিচালন সমিতির আজকের এই সভায় সর্বসম্মতিক্রমে সিদ্ধান্ত গৃহীত ও অনুমোদিত হল। প্রকাশ থাকে যে ${esc(rec.excludingFY)} অর্থবছর-এর সুদ ব্যতীত ${B(esc(rec.staffName))}-এর ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত মোট অর্থের পরিমাণ ${B(money(rec.amountClaimed))}/- (Rupees ${B(words)}) টাকা [এই পরিমাণের মধ্যে অর্থবছর ${esc(rec.interestUptoFY)} পর্যন্ত সুদ অন্তর্ভুক্ত রয়েছে]।</p>
+  <p>অতিরিক্ত বেতন প্রদান, ঋণ আদায় না হওয়া এবং জিপিএফের অগ্রিম আদায় করার ক্ষেত্রে A.I./S (S.E.), ${esc(rec.aiOfficeAddress)}-এর সাথে Cash or Kind কোনও দায়বদ্ধতা নেই যা তাঁর জি.পি.এফ. A/C থেকে এখনও আদায় করা হয়নি। তাঁর চাকরির বিরুদ্ধে কোনো আদালতে মামলা বা মোকদ্দমা নেই।</p>
+  <p>এখন অত্র বিদ্যালয়ের ${esc(rec.hoiStatus)} মহাশয়/মহাশয়া-কে এই বিষয়ে NGIPF মডিউল-এর মাধ্যমে ভবিষ্যনিধি (GPF) তহবিলে গচ্ছিত সুদ সহ মোট প্রাপ্য টাকা তাঁর অনুকূলে মঞ্জুর ও প্রদানের জন্য অনলাইন আবেদন জমা দেওয়ার জন্য ও অন্যান্য আনুষঙ্গিক প্রয়োজনীয় পদক্ষেপ গ্রহণ করার জন্য সর্বসম্মতিক্রমে ক্ষমতা ও দায়িত্ব অর্পণ করা হল।</p>
+  <p>অত্র সভায় সর্বসম্মতিক্রমে উপরোক্ত গৃহীত সিদ্ধান্ত সমূহ সর্বসম্মতিক্রমে অনুমোদিত হল।</p>
+  <p>সভায় আর কোনো আলোচ্য বিষয় না থাকায় সভাপতি মহাশয়কে ধন্যবাদ জ্ঞাপনপূর্বক সভার কার্য সমাপ্ত করা হলো।</p>
+  </div>`;
+  return pageWrap(rec, title, body);
+}
+
+function docAdmnOrder(rec){
+  const words = numberToWords(amountClaimedNumRounded(rec));
+  const title = `<div class="doc-title">HOI Report &amp; Administrator Order</div>
+    <div class="doc-ref">HOI Report No: _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _ _ _</div>`;
+  const body = `
+  <p>${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, an approved ${B(esc(rec.designation))} of this school, has submitted an application for Final Payment in ${pron(rec,'hisHer')} favour of the balance amount including interest up to ${B(fmtDate(rec.dor))} standing at ${pron(rec,'hisHer')} credit in the GPF account, as ${pron(rec,'heShe')} will retire from service on ${B(fmtDate(rec.dor))} (a.n.) due to ${esc(rec.causeOfClaim).toLowerCase()}. It may also be noted that ${pron(rec,'heShe')} has no liabilities in this school either in cash or kind. ${pron(rec,'HisHer')} application along with supporting documents are being placed for taking necessary steps in this regard.</p>
+  <p style="font-weight:700;margin-top:18px;">Administrator Order:</p>
+  <div class="doc-ref">Administrator Order No: _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _</div>
+  <p>As per the application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} (${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]) regarding Final Payment of P.F., and upon verification of related papers and records, it is seen that ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been serving in the post of ${B(esc(rec.designation))} in ${esc(rec.subjectGroup)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>It is also seen that ${pron(rec,'heShe')} has no liabilities either in cash or kind with the school or the A.I./S (S.E.) in respect of overdrawal of salary, non-recovery of loans and advance against G.P.F. which is yet to be recovered from ${pron(rec,'hisHer')} GPF A/C. There is no court case or any litigation against ${pron(rec,'hisHer')} service.</p>
+  <p>Now it is hereby granted and passed for Final Payment of GPF in favour of ${B(esc(rec.staffName))}, in accordance with existing rules.</p>
+  <p>It is also hereby observed that, after excluding interest for the financial year(s) ${esc(rec.excludingFY)}, an amount of ${B(money(rec.amountClaimed))} [Rupees ${B(words)}] remains credited in ${pron(rec,'hisHer')} GPF account, inclusive of interest accrued up to the financial year ${esc(rec.interestUptoFY)}.</p>
+  <p>Accordingly, the ${esc(rec.hoiStatus)} of the school is hereby empowered to take all necessary arrangements for online submission through the NGIPF module and to comply with all allied formalities.</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docValidity(rec){
+  const title = `<div class="doc-title">Certificate Regarding Validity of Managing Committee</div>`;
+  const body = `
+  <p>Certified that -</p>
+  <p>1. The Managing Committee has been functioning now in this school.</p>
+  <p>2. There is no court case or any type of litigation against the Managing Committee.</p>
+  <p>3. The term of the valid Managing Committee is up to ${B(fmtDate(rec.mcValidUpto))}.</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docDelay(rec){
+  const title = `<div class="doc-title">Declaration Regarding Late Submission</div>
+    <div class="doc-ref">To<br>The A.I. of Schools (S.E.)<br>${esc(rec.aiOfficeAddress)}</div>`;
+  const body = `
+  <p>Sir,</p>
+  <p>It is hereby declared that papers for Final Payment of P.F. in favour of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, were not submitted in due time on account of ${esc(rec.delayReason) || 'late submission of application by the employee due to personal problems'}. ${pron(rec,'HeShe')} will retire from service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} (a.n.)</p>
+  <p>Please condone the matter and do the needful.</p>
+  <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, '', esc(rec.hoiStatus))}</div></div>`);
+}
+
+function docMandate(rec){
+  const title = `<div class="doc-ref">ANNEXURE-II</div>
+    <div class="doc-title">Mandate by the Payee for e-Payment</div>
+    <div class="doc-ref">No. _ _ _ _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _<br>
+    To<br>The ${esc(rec.hoiStatus)} (The Head of the office)<br>${esc(rec.schoolName)}<br>${esc(rec.schoolAddress)}</div>`;
+  const body = `
+  <p><b>Subject:</b> Payment through electronic mode.</p>
+  <p>Sir/Madam,</p>
+  <p>I/we am/are giving option for availing the facility of e-Payment. Kindly arrange to remit the amount to my/our Bank Account hereinafter. The details of my/our particulars are furnished below:-</p>
+  <table class="formtbl">
+    <tr><th>1(a) Name of the Claimant/Payee/Recipient</th><td>${B(esc(rec.staffName))}</td></tr>
+    <tr><th>(b) Address</th><td>${esc(rec.employeeAddress)}</td></tr>
+    <tr><th>(c) Contact No.</th><td>Mobile: ${esc(rec.employeeMob)}</td></tr>
+    <tr><th>(d) E-mail</th><td>${esc(rec.employeeMail)}</td></tr>
+    <tr><th>2(a) Name of Bank</th><td>${esc(rec.bankName)}</td></tr>
+    <tr><th>(b) Name of Branch with Branch Code</th><td>${esc(rec.bankBranch)}</td></tr>
+    <tr><th>(c) Account Type</th><td>${esc(rec.bankAcType)}</td></tr>
+    <tr><th>(d) Account Number</th><td>${B(esc(rec.bankAcNo))}</td></tr>
+    <tr><th>(e) IFSC</th><td>${B(esc(rec.bankIFSC))}</td></tr>
+    <tr><th>(f) MICR</th><td>${esc(rec.bankMICR)}</td></tr>
+  </table>
+  <p>The Bank particulars furnished above are correct and true.</p>
+  <p>I/we hereby declare that I/we and my/our heirs and successors accept the liability of making good to Government any overpayment, if any, made to me/us under the scheme.</p>
+  <p>I/we hereby authorise the Branch (name of the Branch) of the Bank to receive amount on my/our behalf for credit to my/our account as stated above, and further authorise that the receipt of credit given by the bank for the amount to my/our account shall be treated as legal quittance.</p>
+  <p>Yours faithfully,</p>
+  <p style="margin-top:34px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>Date: _ _ _ _ _ _ _ _ _ &nbsp;&nbsp; (Signature of the Claimant/Payee/Recipient)</p>
+  <p style="text-align:center;font-weight:700;margin-top:20px;">A C C E P T E D</p>
+  <p style="margin-top:10px;">Date: _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Office Seal) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Signature of the Head of Office</p>
+  <p class="small" style="margin-top:24px;">*1(e) ID No. &amp; Nature of ID: For individual — Voter Card, Aadhaar Card, PAN Card or any other Identity card issued by the State/Central Government, Government Autonomous Bodies, or Local Bodies. For Autonomous Body/Firm/Company — Registration No. or PAN/TAN Number or Trade Licence.</p>
+  <p class="small">**2(a)–(f) Verification of Bank Particulars: Copy of the 1st page of the Pass-Book along with a copy of a cancelled cheque, or certified by the concerned bank branch.</p>`;
+  return pageWrap(rec, title, body);
+}
+
+function docNOM(rec){
+  const title = `<div class="doc-title">First Schedule [See Rule 8(3)]<br>Form of Nomination</div>
+    <div class="doc-ref">Account No. ${B(esc(rec.pfAccNo))}. I hereby nominate the person(s) mentioned below who is/are member(s)/non-member(s) of my family as defined in Rule-2 of the GPF Rules to receive the amount standing to my credit in the Fund.</div>`;
+  function nomRow(n){
+    const addr = rec['nom'+n+'Address']; if(!addr) return '';
+    return `<tr>
+      <td>${B(esc(addr))}</td>
+      <td>${esc(rec['nom'+n+'Rel'])}</td>
+      <td>${B(fmtDate(rec['nom'+n+'Dob']))}</td>
+      <td>${B(esc(rec['nom'+n+'Share'])+'%')}</td>
+      <td>${esc(rec['nom'+n+'Contingency'])}</td>
+      <td>${esc(rec['nom'+n+'Alt'])}</td>
+      <td>${esc(rec['nom'+n+'Reason'])}</td>
+    </tr>`;
+  }
+  const body = `
+  <table class="formtbl" style="font-size:10.6px;">
+    <tr><th>Name &amp; full address of the Nominee(s)</th><th>Relationship with subscriber</th><th>Date of Birth</th><th>Share payable</th><th>Contingencies invalidating nomination</th><th>Name, address &amp; relationship of alternate</th><th>Reason if not a family member</th></tr>
+    ${nomRow(1)}${nomRow(2)}
+  </table>
+  <p style="margin-top:20px;">Date this ${rec.nomSignDate? new Date(rec.nomSignDate).getDate():'__'} day of ${rec.nomSignDate? new Date(rec.nomSignDate).toLocaleString('en-US',{month:'long'}):'__________'} 20${rec.nomSignDate? String(new Date(rec.nomSignDate).getFullYear()).slice(2):'__'} at ${esc(rec.nomPlace)}</p>
+  <div style="display:flex;justify-content:space-between;margin-top:10px;">
+    <div>Two Witnesses to Signature:<br>1. _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>2. _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _</div>
+    <div style="text-align:center;">${B(esc(rec.staffName))} ; ${B(esc(rec.designation))}<br><div class="sig-line"></div>Signature of the Subscriber</div>
+  </div>
+  <p style="font-weight:700;margin-top:26px;">Space for use by the Head of the Institution</p>
+  <p>Nomination by ${pron(rec,'sriSmt')} ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}.</p>
+  <p>Date of Receipt of Nomination: ${fmtDate(rec.nomReceiptDate)}</p>`;
+  const doc = pageWrapNoLetterhead(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, '', 'Signature of the Head of the Institution<br>Designation: '+esc(rec.hoiStatus))}</div></div>`);
+}
+
+function docDeclaration(rec){
+  const title = `<div class="doc-title">Declaration Regarding Overdrawn</div>`;
+  const body = `
+  <p>I, ${B(esc(rec.staffName))}, Ex-${B(esc(rec.designation))} of ${esc(rec.schoolName)} ; ${esc(rec.schoolAddress)}, do hereby declare that the amount (G.P.F./C.P.F.) which is to be sanctioned by the appropriate authority, if afterwards found to be in excess over which I am actually entitled to, I will be bound to refund the same (excess money) forthwith on demand.</p>
+  <p style="margin-top:44px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>Ex-${B(esc(rec.designation))}<br>Address: ${esc(rec.employeeAddress)}</p>
+  <p style="text-align:center;font-weight:700;margin-top:20px;">C O U N T E R S I G N E D</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docLedger(rec){
+  const title = `<div class="doc-title">Particulars of Statement of P.F.<br>(A/C No. ${B(esc(rec.pfAccNo))}) of ${B(esc(rec.staffName))} ; ${B(esc(rec.designation))} ; ${esc(rec.schoolName)}</div>`;
+  let body = '';
+  fyList(rec).forEach(fy=>{
+    const y = rec.ledger[fy];
+    const calc = computeYearTotals(y, fy, rec.dor);
+    body += `<p style="font-weight:700;margin-top:14px;">Financial Year ${fy} &nbsp;&nbsp; (Rate of Interest: ${y.rate}% p.a.)</p>
+    <table class="formtbl" style="font-size:9.6px;">
+      <tr><th>Month</th><th>Opening Balance</th><th>Months for Which Deposited</th><th>Challan No</th><th>Date</th><th>Deposited within 15th</th><th>Deposited after 15th</th><th>Withdrawal</th><th>Cheque No &amp; Date</th><th>Monthly Interest Allowed</th><th>Closing Balance</th><th>Remarks</th></tr>
+      ${MONTH_SEQ.map((mLabel,i)=>{const r=calc.rows[i]; const m=y.months[i]; return `<tr><td>${mLabel}</td><td>${fmtNum(r.opening)}</td><td>${esc(m.monthsFor)||mLabel}</td><td>${esc(m.challan)}</td><td>${fmtDate(m.date)}</td><td>${fmtNum(r.within)}</td><td>${fmtNum(r.after)}</td><td>${fmtNum(r.wd)}</td><td>${esc(m.chequeNo)}</td><td>${fmtNum(r.interest)}</td><td>${fmtNum(r.closing)}</td><td>${esc(m.remarks)}</td></tr>`;}).join('')}
+    </table>
+    <p class="small" style="margin-top:6px;">
+      1. Opening Balance for the year: ₹${fmtNum(y.opening)} &nbsp;&nbsp;
+      2. Total Deposit (incl. recovery of loans): ₹${fmtNum(calc.totalDeposit)}<br>
+      3. Interest allowed during the year: ₹${fmtNum(calc.totalInterest)} &nbsp;&nbsp;
+      4. Total: ₹${fmtNum(y.opening+calc.totalDeposit+calc.totalInterest)}<br>
+      5. Withdrawals during the year: ₹${fmtNum(calc.totalWd)} &nbsp;&nbsp;
+      6. Closing Balance on 31st March of the year: ₹${fmtNum(calc.closingWithInterest)}
+    </p>`;
+  });
+  if(!body) body = '<p>No ledger years have been entered yet. Add a Financial Year in the GPF Ledger &amp; Interest tab.</p>';
+  return pageWrap(rec, title, body);
+}
+
+/* ============================================================
+   DOCUMENT REGISTRY + UI
+   ============================================================ */
+const DOCS = [
+  {id:'cover', label:'Cover Page', desc:'Two-panel file cover with staff & A/C details.', fn:docCOVER},
+  {id:'flpf', label:'Forwarding Letter (FL_PF Final)', desc:'HOI to A.I. of Schools forwarding letter.', fn:docFLPF},
+  {id:'formfinal', label:'Particulars for Final Payment (Form_Final)', desc:'Tabular particulars form with PF balance in words.', fn:docFormFinal},
+  {id:'ixa', label:'Form IX-A', desc:'Employee intimation of retirement/resignation/transfer.', fn:docIXA},
+  {id:'app', label:'Application (APP_PF FINAL)', desc:"Employee's application to President through HOI.", fn:docAPP},
+  {id:'nolia', label:'No-Liability Certificate', desc:'Certificate that the employee has no dues.', fn:docNoLiability},
+  {id:'mcreng', label:'MC Resolution — English', desc:'Managing Committee resolution sanctioning payment.', fn:docMCREng},
+  {id:'mcrbng', label:'MC Resolution — বাংলা', desc:'Bengali version of the MC resolution.', fn:docMCRBng},
+  {id:'admn', label:'HOI Report & Administrator Order', desc:'HOI report followed by Administrator order.', fn:docAdmnOrder},
+  {id:'validity', label:'MC Validity Certificate', desc:"Certificate on the Managing Committee's validity.", fn:docValidity},
+  {id:'delay', label:'Delay Declaration', desc:'Declaration explaining late submission (if any).', fn:docDelay},
+  {id:'mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate form for electronic payment.', fn:docMandate},
+  {id:'nom', label:'Nomination Form (First Schedule)', desc:'GPF nomination form with nominee table.', fn:docNOM},
+  {id:'declaration', label:'Declaration Regarding Overdrawn', desc:'Employee declaration on refund of excess payment.', fn:docDeclaration},
+  {id:'ledger', label:'GPF Ledger / Interest Statement', desc:'Year-wise interest ledger, computed live.', fn:docLedger},
+];
+
+function buildDocGrid(){
+  const grid = document.getElementById('docGrid');
+  grid.innerHTML = '';
+  DOCS.forEach(d=>{
+    const card = document.createElement('div');
+    card.className = 'doccard';
+    card.innerHTML = `<h4>${d.label}</h4><p>${d.desc}</p><button>Preview &amp; Print</button>`;
+    card.querySelector('button').addEventListener('click', ()=> previewSingle(d));
+    grid.appendChild(card);
+  });
+}
+
+function previewSingle(d){
+  const rec = currentRecord();
+  if(!rec){ alert('Select or create a record first.'); return; }
+  readForm();
+  document.getElementById('printArea').innerHTML = d.fn(rec);
+  document.getElementById('previewWrap').classList.add('show');
+}
+function closePreview(){ document.getElementById('previewWrap').classList.remove('show'); }
+
+document.getElementById('btnPrintAll').addEventListener('click', ()=>{
+  const rec = currentRecord();
+  if(!rec){ alert('Select or create a record first.'); return; }
+  readForm();
+  let html = '';
+  DOCS.forEach(d=>{ html += d.fn(rec); });
+  document.getElementById('printArea').innerHTML = html;
+  document.getElementById('previewWrap').classList.add('show');
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  loadStore();
+  if(records.length === 0){
+    records.push(blankRecord());
+  }
+  currentId = records[0].id;
+  refreshRecordSelect();
+  fillForm();
+  buildDocGrid();
+}
+init();
+</script>
+</body>
+</html>
