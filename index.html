@@ -1193,12 +1193,29 @@ function docAdmnOrder(rec){
 }
 
 function docValidity(rec){
-  const title = `<div class="doc-title">Certificate Regarding Validity of Managing Committee</div>`;
-  const body = `
-  <p>Certified that -</p>
-  <p>1. The Managing Committee has been functioning now in this school.</p>
-  <p>2. There is no court case or any type of litigation against the Managing Committee.</p>
-  <p>3. The term of the valid Managing Committee is up to ${B(fmtDate(rec.mcValidUpto))}.</p>`;
+  const sel = esc(rec.adminStatus);
+  let title, body;
+  if(sel === 'Administrator'){
+    title = `<div class="doc-title">Certificate Regarding Administrator</div>`;
+    body = `
+    <p>Certified that -</p>
+    <p>1. The Administrator has been functioning now in this school.</p>
+    <p>2. There is no court case or any type of litigations against the appointment of Administrator.</p>`;
+  } else if(sel === 'Member Secretary [Ad-hoc Committee]'){
+    title = `<div class="doc-title">Certificate Regarding Validity of Ad-hoc Committee</div>`;
+    body = `
+    <p>Certified that -</p>
+    <p>1. The Ad-hoc Committee has been functioning now in this school.</p>
+    <p>2. There is no court case or any type of litigation against the Ad-hoc Committee.</p>
+    <p>3. The term of the valid Ad-hoc Committee is up to ${B(fmtDate(rec.mcValidUpto))}.</p>`;
+  } else {
+    title = `<div class="doc-title">Certificate Regarding Validity of Managing Committee</div>`;
+    body = `
+    <p>Certified that -</p>
+    <p>1. The Managing Committee has been functioning now in this school.</p>
+    <p>2. There is no court case or any type of litigation against the Managing Committee.</p>
+    <p>3. The term of the valid Managing Committee is up to ${B(fmtDate(rec.mcValidUpto))}.</p>`;
+  }
   const doc = pageWrap(rec, title, body);
   return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
 }
@@ -1334,7 +1351,7 @@ const DOCS = [
   {id:'mcreng', label:'MC Resolution — English', desc:'Managing Committee resolution sanctioning payment.', fn:docMCREng},
   {id:'mcrbng', label:'MC Resolution — বাংলা', desc:'Bengali version of the MC resolution.', fn:docMCRBng},
   {id:'admn', label:'HOI Report & Administrator Order', desc:'HOI report followed by Administrator order.', fn:docAdmnOrder},
-  {id:'validity', label:'MC Validity Certificate', desc:"Certificate on the Managing Committee's validity.", fn:docValidity},
+  {id:'validity', label:'MC / Administrator Validity Certificate', desc:"Auto-switches wording based on President/Administrator/Ad-hoc selection above.", fn:docValidity},
   {id:'delay', label:'Delay Declaration', desc:'Declaration explaining late submission (if any).', fn:docDelay},
   {id:'mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate form for electronic payment.', fn:docMandate},
   {id:'nom', label:'Nomination Form (First Schedule)', desc:'GPF nomination form with nominee table.', fn:docNOM},
