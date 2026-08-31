@@ -544,8 +544,13 @@ function saveStore(){
   gpfDocRef.set({records: records, updatedAt: new Date().toISOString()})
     .then(()=> setSyncStatus('☁ Synced', '#065f46'))
     .catch((err)=>{
-      console.error('Firestore save failed:', err);
-      setSyncStatus('⚠ Save failed - check connection', '#b91c1c');
+      console.error('Firestore save failed:', err.code, err.message, err);
+      // Show the real reason instead of a generic message — 'permission-denied'
+      // means the security rules rejected the write (most common cause of an
+      // ALWAYS-failing save, as opposed to an intermittent one); 'unavailable'
+      // or 'network-request-failed' means an actual connectivity problem.
+      const reason = err.code ? `⚠ Save failed: ${err.code}` : '⚠ Save failed - check connection';
+      setSyncStatus(reason, '#b91c1c');
     });
 }
 
