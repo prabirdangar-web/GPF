@@ -497,6 +497,13 @@ function adminLogin(){
 function adminLogout(){ auth.signOut(); }
 
 /* ---- Real-time cloud sync of the whole records list ---- */
+function isEditingForm(){
+  // True while focus is inside a bound field, so we don't stomp on
+  // keystrokes that haven't been committed to `records` yet (they're
+  // only written on 'change'/blur, not on every keystroke).
+  const ae = document.activeElement;
+  return !!(ae && ae.hasAttribute && ae.hasAttribute('data-f'));
+}
 gpfDocRef.onSnapshot((docSnap)=>{
   if(docSnap.exists && Array.isArray(docSnap.data().records)){
     records = docSnap.data().records;
@@ -505,6 +512,11 @@ gpfDocRef.onSnapshot((docSnap)=>{
   }
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }catch(e){}
   setSyncStatus('☁ Synced', '#065f46');
+  // Skip the full-form rebuild when this snapshot is just the local echo
+  // of our own in-flight write (hasPendingWrites), or when the user is
+  // actively typing — either case would otherwise reset unsaved field
+  // values mid-edit. `records` above is still kept up to date either way.
+  if(docSnap.metadata.hasPendingWrites || isEditingForm()) return;
   refreshAfterCloudUpdate();
 }, (err)=>{
   console.error('Firestore sync error, using local cache:', err);
