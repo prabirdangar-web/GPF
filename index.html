@@ -1270,6 +1270,29 @@ function sigRight(desigHtml){
 /* ============================================================
    DOCUMENT GENERATORS  (one function per workbook sheet)
    ============================================================ */
+function todayIsoLocal(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function retirementStatus(rec){
+  if(!rec || !rec.dor) return 'future';
+  const today = todayIsoLocal();
+  if(rec.dor < today) return 'past';
+  if(rec.dor === today) return 'today';
+  return 'future';
+}
+function retireVerb(rec){
+  return retirementStatus(rec) === 'past' ? 'retired' : 'to be retired';
+}
+function retireFuturePhrase(rec){
+  return retirementStatus(rec) === 'past' ? 'has been retired' : 'will retire';
+}
+function dueRetirePhrase(rec){
+  return retirementStatus(rec) === 'past' ? 'was retired' : 'is due to retire';
+}
 function retDateStr(rec){
   return fmtDate(rec.dor) + ' (a.n.) due to ' + esc(rec.causeOfClaim);
 }
@@ -1285,7 +1308,7 @@ function docCOVER(rec){
       <div class="cover-title">FINAL PAYMENT<br>FROM P.F. A/C OF</div>
       <div class="cover-name">${B(esc(rec.staffName).toUpperCase())}; ${esc(rec.designation).toUpperCase()}</div>
       <div class="cover-meta" style="margin-top:10px;">NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</div>
-      <div class="cover-meta">[is to be retired on ${B(retDateStr(rec))}]</div>
+      <div class="cover-meta">[${retireVerb(rec)} on ${B(retDateStr(rec))}]</div>
       <div class="cover-meta">MOBILE NO OF THE INCUMBENT: ${B(esc(rec.employeeMob))}</div>
     </div>`;
   return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
@@ -1319,12 +1342,12 @@ function flpfEnclosures(rec){
 function docFLPF(rec){
   const title = `<div class="doc-ref">To<br>The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}]<br>${esc(rec.aiOfficeAddress)}</div>`;
   const body = `
-    <p><b>Subject:</b> Final Payment from P.F. A/C of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, is to be retired from service on ${esc(rec.causeOfClaim).toLowerCase()} with effect from ${B(retDateStr(rec))}.</p>
+    <p><b>Subject:</b> Final Payment from P.F. A/C of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, ${retireVerb(rec)} from service on ${esc(rec.causeOfClaim).toLowerCase()} with effect from ${B(retDateStr(rec))}.</p>
     <p><b>Ref:</b> NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</p>
     <p>Sir,</p>
-    <p>With due respect, I beg to state that ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, is to be retired from service with effect from ${B(retDateStr(rec))} after rendering long and satisfactory service under this institution.</p>
+    <p>With due respect, I beg to state that ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}, ${retireVerb(rec)} from service with effect from ${B(retDateStr(rec))} after rendering long and satisfactory service under this institution.</p>
     <p>It is respectfully submitted that the Application for Final Payment of Provident Fund bearing Application ID ${B(esc(rec.applicationId))} has been duly processed and sanctioned vide Sanction ID ${B(esc(rec.sanctionId))} by the sanctioning admin ${esc(rec.sanctionAdmin)}. Further, the Directorate of Pension, Provident Fund &amp; Group Insurance has issued the Final Payment Authority bearing Authority ID ${B(esc(rec.fpAuthorityId))}, authorising The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}] to draw the sanctioned amount ${B(money(rec.sanctionedAmount))} [Principal: ${B(money(rec.amountClaimed))}, Interest: ${money((parseFloat(rec.sanctionedAmount)||0)-(parseFloat(rec.amountClaimed)||0))}] through ${esc(rec.treasury)}.</p>
-    <p>In view of the above facts and approval accorded by the competent authority, I most respectfully request you to be kind enough to take necessary action for release and drawal of the sanctioned Provident Fund Final Payment amount at an early date, so that the admissible dues of the retired employee may be disbursed without further delay.</p>
+    <p>In view of the above facts and approval accorded by the competent authority, I most respectfully request you to be kind enough to take necessary action for release and drawal of the sanctioned Provident Fund Final Payment amount at an early date, so that the admissible dues of the ${retireVerb(rec) === 'retired' ? 'retired' : 'employee'} may be disbursed without further delay.</p>
     <p>All relevant sanction orders, Final Payment Authority and connected documents are enclosed herewith for your kind perusal and necessary action.</p>
     <p>I shall remain obliged for your kind cooperation in this matter.</p>
     <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>
@@ -1370,7 +1393,7 @@ function docIXA(rec){
   <p>Sir,</p>
   <p>My total length of service stands at ${B(esc(rec.totalService))}${rec.prevSchool ? ', including prior service rendered at ' + esc(rec.prevSchool) : ''}, reckoned from ${B(fmtDate(rec.dofj))} to ${B(fmtDate(rec.dor))}.</p>
   <p>I am to inform you that</p>
-  <p>1. I am due to retire / have been retired from service with effect from ${B(retDateStr(rec))}.</p>
+  <p>1. I ${retirementStatus(rec) === 'past' ? 'have been retired' : 'am due to retire'} from service with effect from ${B(retDateStr(rec))}.</p>
   <p>2. I have resigned finally from service in _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of the institution) with effect from _ _ _ _ _ _ _ _ _ .</p>
   <p>3. I have been dismissed from service with effect from _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ and my resignation has been accepted w.e.f. _ _ _ _ _ _ _ .</p>
   <p>Necessary steps for Final Payment of balance standing at my credit in my GPF account may be made at the earliest convenience.</p>
@@ -1388,7 +1411,7 @@ function docAPP(rec){
     <div class="doc-ref">Ref: Employee ID: ${B(esc(rec.employeeCode))} ; PF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
   const body = `
   <p>Sir,</p>
-  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, have been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, have been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and ${retirementStatus(rec) === 'past' ? 'have been retired' : 'will retire'} from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
   <p>My total length of service, reckoned from ${B(fmtDate(rec.dofj))} to ${B(fmtDate(rec.dor))}, stands at ${B(esc(rec.totalService))}${rec.prevSchool ? ', inclusive of prior service rendered at ' + esc(rec.prevSchool) : ''}.</p>
   <p>It may also be mentioned for your kind information that I have no liabilities in this school either in cash or kind.</p>
   <p>Hence you are requested to take necessary steps for making Final Payment from my own contribution to the G.P.F. including up to date accrued interest admissible as per rule, standing at credit in my GPF account.</p>
@@ -1405,7 +1428,7 @@ function docNoLiability(rec){
     <div class="doc-ref">To whom it may concern<br>Ref: Employee ID: ${B(esc(rec.employeeCode))} ; NGIPF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
   const body = `
   <p>Certified that -</p>
-  <p>The subscriber ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, who is due to retire from ${pron(rec,'hisHer')} service on ${B(fmtDate(rec.dor))} (a.n.), will not raise any objection in connection with the Final Payment from ${pron(rec,'hisHer')} own contribution to the G.P.F. including up to date accrued interest admissible as per rule.</p>
+  <p>The subscriber ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, who ${retirementStatus(rec) === 'past' ? 'has been retired from' : 'is due to retire from'} ${pron(rec,'hisHer')} service on ${B(fmtDate(rec.dor))} (a.n.), will not raise any objection in connection with the Final Payment from ${pron(rec,'hisHer')} own contribution to the G.P.F. including up to date accrued interest admissible as per rule.</p>
   <p>Further verification confirms that ${B(esc(rec.staffName))} holds no liabilities, whether in cash or kind, to the school or to the office of the A.I. of Schools (S.E.), ${esc(rec.aiOfficeAddress)}. There are no instances of salary overdrawal, nor is there any outstanding recovery against loans or advances from ${pron(rec,'hisHer')} GPF account. Additionally, there are no court cases or litigation pending against ${pron(rec,'himHer')} in connection with ${pron(rec,'hisHer')} service.</p>`;
   const doc = pageWrap(rec, title, body);
   return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
@@ -1444,10 +1467,10 @@ function docAdmnOrder(rec){
   const title = `<div class="doc-title">HOI Report &amp; Administrator Order</div>
     <div class="doc-ref">HOI Report No: _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _ _ _</div>`;
   const body = `
-  <p>${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, an approved ${B(esc(rec.designation))} of this school, has submitted an application for Final Payment in ${pron(rec,'hisHer')} favour of the balance amount including interest up to ${B(fmtDate(rec.dor))} standing at ${pron(rec,'hisHer')} credit in the GPF account, as ${pron(rec,'heShe')} will retire from service on ${B(fmtDate(rec.dor))} (a.n.) due to ${esc(rec.causeOfClaim).toLowerCase()}. It may also be noted that ${pron(rec,'heShe')} has no liabilities in this school either in cash or kind. ${pron(rec,'HisHer')} application along with supporting documents are being placed for taking necessary steps in this regard.</p>
+  <p>${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, an approved ${B(esc(rec.designation))} of this school, has submitted an application for Final Payment in ${pron(rec,'hisHer')} favour of the balance amount including interest up to ${B(fmtDate(rec.dor))} standing at ${pron(rec,'hisHer')} credit in the GPF account, as ${pron(rec,'heShe')} ${retirementStatus(rec) === 'past' ? 'has been retired from service on' : 'will retire from service on'} ${B(fmtDate(rec.dor))} (a.n.) due to ${esc(rec.causeOfClaim).toLowerCase()}. It may also be noted that ${pron(rec,'heShe')} has no liabilities in this school either in cash or kind. ${pron(rec,'HisHer')} application along with supporting documents are being placed for taking necessary steps in this regard.</p>
   <p style="font-weight:700;margin-top:18px;">Administrator Order:</p>
   <div class="doc-ref">Administrator Order No: _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _</div>
-  <p>As per the application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} (${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]) regarding Final Payment of P.F., and upon verification of related papers and records, it is seen that ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and will retire from ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
+  <p>As per the application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} (${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]) regarding Final Payment of P.F., and upon verification of related papers and records, it is seen that ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been serving in the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break, in accordance with approval no. ${B(esc(rec.approvalNoDate))}, and ${retirementStatus(rec) === 'past' ? 'has been retired from' : 'will retire from'} ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.]</p>
   <p>It is also seen that ${pron(rec,'heShe')} has no liabilities either in cash or kind with the school or the A.I./S (S.E.) in respect of overdrawal of salary, non-recovery of loans and advance against G.P.F. which is yet to be recovered from ${pron(rec,'hisHer')} GPF A/C. There is no court case or any litigation against ${pron(rec,'hisHer')} service.</p>
   <p>Now it is hereby granted and passed for Final Payment of GPF in favour of ${B(esc(rec.staffName))}, in accordance with existing rules.</p>
   <p>It is also hereby observed that, after excluding interest for the financial year(s) ${esc(rec.excludingFY)}, an amount of ${B(money(rec.amountClaimed))} [Rupees ${B(words)}] remains credited in ${pron(rec,'hisHer')} GPF account, inclusive of interest accrued up to the financial year ${esc(rec.interestUptoFY)}.</p>
@@ -1489,7 +1512,7 @@ function docDelay(rec){
     <div class="doc-ref">To<br>The A.I. of Schools (S.E.)<br>${esc(rec.aiOfficeAddress)}</div>`;
   const body = `
   <p>Sir,</p>
-  <p>It is hereby declared that papers for Final Payment of P.F. in favour of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, were not submitted in due time on account of ${esc(rec.delayReason) || 'late submission of application by the employee due to personal problems'}. ${pron(rec,'HeShe')} will retire from service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} (a.n.)</p>
+  <p>It is hereby declared that papers for Final Payment of P.F. in favour of ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of this school, were not submitted in due time on account of ${esc(rec.delayReason) || 'late submission of application by the employee due to personal problems'}. ${pron(rec,'HeShe')} ${retirementStatus(rec) === 'past' ? 'has been retired from service due to' : 'will retire from service due to'} ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} (a.n.)</p>
   <p>Please condone the matter and do the needful.</p>
   <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>`;
   const doc = pageWrap(rec, title, body);
