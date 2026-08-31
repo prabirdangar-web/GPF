@@ -114,10 +114,12 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
   const firebaseConfig = {
     apiKey: "AIzaSyCiqQFsnbSi6eCgUI_W3NTybzIkRmCI_54",
     authDomain: "tfhs-portal.firebaseapp.com",
+    databaseURL: "https://tfhs-portal-default-rtdb.firebaseio.com",
     projectId: "tfhs-portal",
     storageBucket: "tfhs-portal.firebasestorage.app",
     messagingSenderId: "316041012204",
-    appId: "1:316041012204:web:c0b52bc796c5ac173716c9"
+    appId: "1:316041012204:web:fb8eb52c60312a9d3716c9",
+    measurementId: "G-7MFD9HYEYD"
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
