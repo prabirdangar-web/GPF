@@ -145,6 +145,15 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
   .admin-only{display:none;}
   body.is-admin .admin-only{display:inline-block;}
 </style>
+<style>
+/* Keep the authentication panel from covering the JSON controls. */
+@media (min-width: 900px){
+  header.app{padding-right:250px;}
+}
+@media (max-width: 899px){
+  #authPanel{position:relative !important;top:auto !important;right:auto !important;width:auto !important;margin:8px 10px !important;box-sizing:border-box;}
+}
+</style>
 
 <header class="app">
   <div>
@@ -156,11 +165,11 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
     <button id="btnNew" class="admin-only">＋ New Record</button>
     <button id="btnSave" class="primary admin-only">💾 Save</button>
     <button id="btnDelete" class="danger admin-only">🗑 Delete</button>
-    <button id="btnSaveJSON" class="admin-only">💾 Save JSON</button>
+    <button id="btnSaveJSON">💾 Save JSON</button>
     <button id="btnExport">⬇ Export JSON</button>
     <label style="display:flex;align-items:center;">
       <input type="file" id="fileImport" accept="application/json" style="display:none;">
-      <button id="btnImport" type="button" class="admin-only">⬆ Import JSON</button>
+      <button id="btnImport" type="button">⬆ Import JSON</button>
     </label>
   </div>
 </header>
@@ -842,7 +851,6 @@ function downloadJSON(payload, filename){
 
 /* Save JSON = backup the currently selected record only. */
 document.getElementById('btnSaveJSON').addEventListener('click', ()=>{
-  if(!isAdmin){ alert('Please log in as admin to save JSON.'); return; }
   readForm();
   const rec = currentRecord();
   if(!rec){ alert('Select or create a record first.'); return; }
