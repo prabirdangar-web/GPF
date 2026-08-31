@@ -105,6 +105,45 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 </head>
 <body>
 
+<div id="syncStatus" style="position:fixed;bottom:10px;right:10px;background:#0f172a;color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;z-index:999;box-shadow:0 2px 6px rgba(0,0,0,.2);">Connecting…</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCiqQFsnbSi6eCgUI_W3NTybzIkRmCI_54",
+    authDomain: "tfhs-portal.firebaseapp.com",
+    projectId: "tfhs-portal",
+    storageBucket: "tfhs-portal.firebasestorage.app",
+    messagingSenderId: "316041012204",
+    appId: "1:316041012204:web:c0b52bc796c5ac173716c9"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const gpfDocRef = db.collection('tfhs').doc('gpfFinalPayment');
+</script>
+
+<!-- ADMIN LOGIN PANEL (view-only for everyone unless logged in) -->
+<div id="authPanel" style="position:fixed;top:10px;right:10px;z-index:999;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:12px;width:210px;">
+  <div id="authLoggedOut">
+    <div style="font-weight:700;margin-bottom:6px;">🔒 View Only Mode</div>
+    <input type="email" id="authEmail" placeholder="Admin email" style="width:100%;margin-bottom:5px;padding:5px;font-size:11px;border:1px solid #cbd5e1;border-radius:4px;">
+    <input type="password" id="authPass" placeholder="Password" style="width:100%;margin-bottom:5px;padding:5px;font-size:11px;border:1px solid #cbd5e1;border-radius:4px;" onkeydown="if(event.key==='Enter')adminLogin();">
+    <button style="width:100%;padding:7px;font-size:11px;background:#1a3a6b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;" onclick="adminLogin()">Login to Edit</button>
+    <div id="authError" style="color:#b91c1c;font-size:10.5px;margin-top:4px;"></div>
+  </div>
+  <div id="authLoggedIn" style="display:none;">
+    <div style="font-weight:700;margin-bottom:6px;color:#065f46;">✅ Admin Mode (editing enabled)</div>
+    <button style="width:100%;padding:7px;font-size:11px;background:#b91c1c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;" onclick="adminLogout()">Logout</button>
+  </div>
+</div>
+<style>
+  .admin-only{display:none;}
+  body.is-admin .admin-only{display:inline-block;}
+</style>
+
 <header class="app">
   <div>
     <h1>GPF Final Payment — Document Generation Suite</h1>
@@ -112,13 +151,13 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
   </div>
   <div class="toolbar">
     <select id="recordSelect"></select>
-    <button id="btnNew">＋ New Record</button>
-    <button id="btnSave" class="primary">💾 Save</button>
-    <button id="btnDelete" class="danger">🗑 Delete</button>
+    <button id="btnNew" class="admin-only">＋ New Record</button>
+    <button id="btnSave" class="primary admin-only">💾 Save</button>
+    <button id="btnDelete" class="danger admin-only">🗑 Delete</button>
     <button id="btnExport">⬇ Export JSON</button>
     <label style="display:flex;align-items:center;">
       <input type="file" id="fileImport" accept="application/json" style="display:none;">
-      <button id="btnImport" type="button">⬆ Import JSON</button>
+      <button id="btnImport" type="button" class="admin-only">⬆ Import JSON</button>
     </label>
   </div>
 </header>
@@ -432,11 +471,71 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 const STORE_KEY = 'gpf_final_payment_records_v1';
 let records = [];
 let currentId = null;
+let isAdmin = false;
+
+function setSyncStatus(text, color){
+  const el = document.getElementById('syncStatus');
+  if(el){ el.textContent = text; el.style.background = color || '#0f172a'; }
+}
+
+/* ---- Admin login/logout (Firebase Authentication) ---- */
+auth.onAuthStateChanged((user)=>{
+  isAdmin = !!user;
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.getElementById('authLoggedOut').style.display = isAdmin ? 'none' : '';
+  document.getElementById('authLoggedIn').style.display = isAdmin ? '' : 'none';
+});
+function adminLogin(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  auth.signInWithEmailAndPassword(email, pass).catch((err)=>{
+    errEl.textContent = 'Login failed: incorrect email or password.';
+  });
+}
+function adminLogout(){ auth.signOut(); }
+
+/* ---- Real-time cloud sync of the whole records list ---- */
+gpfDocRef.onSnapshot((docSnap)=>{
+  if(docSnap.exists && Array.isArray(docSnap.data().records)){
+    records = docSnap.data().records;
+  } else {
+    records = [];
+  }
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }catch(e){}
+  setSyncStatus('☁ Synced', '#065f46');
+  refreshAfterCloudUpdate();
+}, (err)=>{
+  console.error('Firestore sync error, using local cache:', err);
+  setSyncStatus('⚠ Offline (local only)', '#b45309');
+  try{ records = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ records = []; }
+  refreshAfterCloudUpdate();
+});
+
+// Runs after every cloud snapshot (initial load AND any later change from any device).
+function refreshAfterCloudUpdate(){
+  if(records.length === 0){ records.push(blankRecord()); }
+  if(!currentId || !records.find(r=>r.id===currentId)) currentId = records[0].id;
+  refreshRecordSelect();
+  fillForm();
+  buildDocGrid();
+}
 
 function loadStore(){
   try{ records = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ records = []; }
 }
-function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+function saveStore(){
+  localStorage.setItem(STORE_KEY, JSON.stringify(records));
+  if(!isAdmin) return; // view-only users' edits stay local and are not pushed to the shared cloud copy
+  setSyncStatus('☁ Saving…', '#1e3a8a');
+  gpfDocRef.set({records: records, updatedAt: new Date().toISOString()})
+    .then(()=> setSyncStatus('☁ Synced', '#065f46'))
+    .catch((err)=>{
+      console.error('Firestore save failed:', err);
+      setSyncStatus('⚠ Save failed - check connection', '#b91c1c');
+    });
+}
 
 function blankRecord(){
   return {
@@ -676,16 +775,19 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
    RECORD CRUD
    ============================================================ */
 document.getElementById('btnNew').addEventListener('click', ()=>{
+  if(!isAdmin){ alert('Please log in as admin to add a new record.'); return; }
   const rec = blankRecord();
   records.push(rec);
   currentId = rec.id;
   saveStore(); refreshRecordSelect(); fillForm();
 });
 document.getElementById('btnSave').addEventListener('click', ()=>{
+  if(!isAdmin){ alert('Please log in as admin to save.'); return; }
   readForm(); saveStore(); refreshRecordSelect();
   alert('Record saved to browser storage.');
 });
 document.getElementById('btnDelete').addEventListener('click', ()=>{
+  if(!isAdmin){ alert('Please log in as admin to delete.'); return; }
   if(!currentId) return;
   if(!confirm('Delete this record permanently?')) return;
   records = records.filter(r=>r.id!==currentId);
@@ -705,6 +807,7 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
 });
 document.getElementById('btnImport').addEventListener('click', ()=> document.getElementById('fileImport').click());
 document.getElementById('fileImport').addEventListener('change', (e)=>{
+  if(!isAdmin){ alert('Please log in as admin to import.'); e.target.value=''; return; }
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ()=>{
