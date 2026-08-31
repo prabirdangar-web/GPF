@@ -156,6 +156,7 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
     <button id="btnNew" class="admin-only">＋ New Record</button>
     <button id="btnSave" class="primary admin-only">💾 Save</button>
     <button id="btnDelete" class="danger admin-only">🗑 Delete</button>
+    <button id="btnSaveJSON" class="admin-only">💾 Save JSON</button>
     <button id="btnExport">⬇ Export JSON</button>
     <label style="display:flex;align-items:center;">
       <input type="file" id="fileImport" accept="application/json" style="display:none;">
@@ -817,27 +818,160 @@ document.getElementById('btnDelete').addEventListener('click', ()=>{
 document.getElementById('recordSelect').addEventListener('change', (e)=>{
   currentId = e.target.value; fillForm();
 });
-document.getElementById('btnExport').addEventListener('click', ()=>{
-  const blob = new Blob([JSON.stringify(records,null,2)], {type:'application/json'});
+/* ---- JSON BACKUP / RESTORE ---- */
+function safeFilePart(value){
+  return String(value || 'record')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/\\s+/g, '_')
+    .slice(0, 80) || 'record';
+}
+
+function downloadJSON(payload, filename){
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'gpf_final_payment_records.json';
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+/* Save JSON = backup the currently selected record only. */
+document.getElementById('btnSaveJSON').addEventListener('click', ()=>{
+  if(!isAdmin){ alert('Please log in as admin to save JSON.'); return; }
+  readForm();
+  const rec = currentRecord();
+  if(!rec){ alert('Select or create a record first.'); return; }
+
+  const backup = {
+    format: 'GPF-FINAL-PAYMENT-JSON',
+    version: 2,
+    type: 'single-record',
+    exportedAt: new Date().toISOString(),
+    record: rec
+  };
+
+  downloadJSON(
+    backup,
+    'GPF_' + safeFilePart(rec.staffName || rec.pfAccNo || rec.id) + '_record.json'
+  );
+  setSyncStatus('✓ JSON backup saved', '#065f46');
 });
-document.getElementById('btnImport').addEventListener('click', ()=> document.getElementById('fileImport').click());
+
+/* Export JSON = backup ALL records in one file. */
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  readForm();
+  const backup = {
+    format: 'GPF-FINAL-PAYMENT-JSON',
+    version: 2,
+    type: 'full-backup',
+    exportedAt: new Date().toISOString(),
+    currentId: currentId,
+    records: records
+  };
+
+  downloadJSON(backup, 'gpf_final_payment_full_backup.json');
+  setSyncStatus('✓ Full JSON exported', '#065f46');
+});
+
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  if(!isAdmin){ alert('Please log in as admin to import.'); return; }
+  document.getElementById('fileImport').click();
+});
+
 document.getElementById('fileImport').addEventListener('change', (e)=>{
   if(!isAdmin){ alert('Please log in as admin to import.'); e.target.value=''; return; }
-  const file = e.target.files[0]; if(!file) return;
+
+  const file = e.target.files[0];
+  if(!file) return;
+
   const reader = new FileReader();
   reader.onload = ()=>{
     try{
-      const incoming = JSON.parse(reader.result);
-      if(Array.isArray(incoming)){
-        records = records.concat(incoming);
-        saveStore(); refreshRecordSelect();
-        alert('Imported ' + incoming.length + ' record(s).');
+      const parsed = JSON.parse(reader.result);
+      let incoming = [];
+      let importedCurrentId = null;
+
+      /* Accept:
+         1. New full-backup object
+         2. New single-record backup object
+         3. Old format: plain array of records
+      */
+      if(Array.isArray(parsed)){
+        incoming = parsed;
+      }else if(parsed && Array.isArray(parsed.records)){
+        incoming = parsed.records;
+        importedCurrentId = parsed.currentId || null;
+      }else if(parsed && parsed.record && typeof parsed.record === 'object'){
+        incoming = [parsed.record];
+      }else{
+        throw new Error('Unsupported JSON structure');
       }
-    }catch(err){ alert('Invalid JSON file.'); }
+
+      incoming = incoming.filter(r => r && typeof r === 'object');
+
+      if(!incoming.length){
+        alert('No valid records found in this JSON file.');
+        return;
+      }
+
+      /* Make sure every imported record has an id and ledger object. */
+      incoming = incoming.map((r, i)=>({
+        ...blankRecord(),
+        ...r,
+        id: r.id || ('rec_import_' + Date.now() + '_' + i),
+        ledger: (r.ledger && typeof r.ledger === 'object') ? r.ledger : {}
+      }));
+
+      const mode = confirm(
+        'Import ' + incoming.length + ' record(s)?\\n\\n' +
+        'OK = REPLACE current records\\n' +
+        'Cancel = MERGE with current records'
+      );
+
+      if(mode){
+        records = incoming;
+        currentId = importedCurrentId && records.some(r=>r.id===importedCurrentId)
+          ? importedCurrentId
+          : records[0].id;
+      }else{
+        const existingIds = new Set(records.map(r=>r.id));
+        const added = [];
+        incoming.forEach(r=>{
+          if(existingIds.has(r.id)){
+            /* Give duplicate imported records a new ID so no record is lost. */
+            r.id = 'rec_import_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+          }
+          existingIds.add(r.id);
+          added.push(r);
+        });
+        records = records.concat(added);
+        currentId = added[0]?.id || currentId;
+      }
+
+      localStorage.setItem(STORE_KEY, JSON.stringify(records));
+      refreshRecordSelect();
+      fillForm();
+      buildDocGrid();
+
+      /* Push imported data to Firestore when logged in. */
+      saveStore();
+
+      setSyncStatus('✓ JSON imported', '#065f46');
+      alert(
+        'Successfully imported ' + incoming.length + ' record(s).\\n' +
+        (mode ? 'Current records were replaced.' : 'Records were merged.')
+      );
+    }catch(err){
+      console.error('JSON import error:', err);
+      alert('Invalid or unsupported JSON file.\\nPlease use a JSON backup exported from this application.');
+    }finally{
+      e.target.value = '';
+    }
   };
   reader.readAsText(file);
 });
