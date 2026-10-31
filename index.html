@@ -70,6 +70,13 @@ table.led tfoot td{font-weight:700;background:#f7fafc;}
 
 .docpage{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto 14px;background:#fff;padding:18mm 16mm;font-family:"Lucida Bright","Lucida Serif","Book Antiqua","Palatino Linotype",Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;color:#111;position:relative;page-break-after:always;overflow:hidden;}
 .docpage:last-child{page-break-after:auto;}
+/* School letters: no printed letterhead — blank space at top for the school's own letter-pad (gap set in Employee tab / preview bar) */
+.docpage.lp{padding-top:var(--pad-gap,7.2cm);}
+#printArea[contenteditable=true]{outline:none;}
+#printArea[contenteditable=true]:hover{box-shadow:0 0 0 1px rgba(200,150,30,.5);}
+#previewBar label{color:#fff;font-size:12px;display:flex;align-items:center;gap:5px;}
+#previewBar input[type=number]{width:62px;padding:6px;border-radius:5px;border:1px solid #fff;font-size:12.5px;}
+#previewBar .edithint{color:#e6eef6;font-size:11.5px;align-self:center;margin-right:auto;}
 .lh-top{text-align:center;border-bottom:2.5px solid #0b3d66;padding-bottom:8px;margin-bottom:16px;}
 .lh-school{font-size:19px;font-weight:700;color:#0b3d66;letter-spacing:.02em;}
 .lh-addr{font-size:11.5px;margin-top:2px;color:#333;}
@@ -99,6 +106,7 @@ table.formtbl th{background:#eef2f6;}
   .docpage{box-shadow:none;margin:0;width:210mm;min-height:297mm;padding:18mm 16mm;}
   @page{size:A4 portrait;margin:0;}
   #previewBar{display:none;}
+  .docpage.lp{padding-top:var(--pad-gap,7.2cm);}
 }
 footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;color:#7c8b9b;}
 </style>
@@ -295,6 +303,26 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
   </fieldset>
 
   <fieldset>
+    <legend>PF Ledger Enclosure &amp; Letter-Pad Settings</legend>
+    <div class="grid">
+      <div class="field"><label>PF Ledger opened from (basis)</label>
+        <select data-f="ledgerOpenBasis">
+          <option value="">Following F.Y. after first joining (default)</option>
+          <option value="after2">After 2 years from first joining</option>
+          <option value="manual">Manual (type F.Y. below)</option>
+        </select>
+        <div class="hint">Counted from Date of First Joining (falls back to Month of First Deposit if joining date is blank).</div>
+      </div>
+      <div class="field"><label>Ledger Opening F.Y. (override)</label><input data-f="ledgerOpenFY" placeholder="auto, e.g. 1998-99"></div>
+      <div class="field"><label>Ledger Retirement F.Y. (override)</label><input data-f="ledgerRetFY" placeholder="auto from Date of Retirement"></div>
+      <div class="field"><label>Online PF Statement available from F.Y.</label><input data-f="ledgerOnlineFrom" placeholder="2023-24"></div>
+      <div class="field"><label>Letter-pad top blank gap (cm)</label><input type="number" step="0.1" min="0" max="20" data-f="padTopGap" id="f_padTopGap" placeholder="7.2">
+        <div class="hint">School letters carry no printed letterhead; this much space is left at the top of the page for the school's own letter-pad. Default 7.2 cm — change it for a different pad size (0 = no gap).</div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
     <legend>Sanction / Authority</legend>
     <div class="grid">
       <div class="field wide"><label>Application ID &amp; Date</label><input data-f="applicationId"></div>
@@ -470,10 +498,14 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <div id="previewWrap">
   <div id="previewBar">
+    <span class="edithint">✎ Click anywhere on the page to edit the text before printing (edits last until you close the preview).</span>
+    <label title="Blank space kept at the top of every school letter for the school's own letter-pad">Top gap (cm)
+      <input type="number" id="padGapLive" min="0" max="20" step="0.1">
+    </label>
     <button onclick="window.print()">🖨 Print</button>
     <button onclick="closePreview()">✕ Close</button>
   </div>
-  <div id="printArea"></div>
+  <div id="printArea" contenteditable="true" spellcheck="false"></div>
 </div>
 
 <script>
@@ -1238,16 +1270,19 @@ function pron(rec, key){
 /* ============================================================
    LETTERHEAD / PAGE WRAP
    ============================================================ */
-function letterhead(rec){
-  return `
-  <div class="lh-top">
-    <div class="lh-school">${esc(rec.schoolName).toUpperCase()}</div>
-    <div class="lh-addr">${esc(rec.schoolAddress)}</div>
-    <div class="lh-meta">e-mail: ${esc(rec.schoolMailId)} &nbsp;|&nbsp; Contact: ${esc(rec.hoiMobile)} (HOI)</div>
-  </div>`;
+/* Printed letterhead removed: school letters are printed on the school's own letter-pad.
+   The blank top gap is applied by the .docpage.lp class (CSS var --pad-gap, set from the record). */
+function letterhead(rec){ return ''; }
+function padGapCm(rec){
+  const v = parseFloat(rec && rec.padTopGap);
+  return (isFinite(v) && v >= 0) ? v : 7.2;
+}
+function applyPadGap(rec){
+  document.getElementById('printArea').style.setProperty('--pad-gap', padGapCm(rec) + 'cm');
+  document.getElementById('padGapLive').value = padGapCm(rec);
 }
 function pageWrap(rec, titleHtml, bodyHtml){
-  return `<div class="docpage">${letterhead(rec)}${titleHtml}<div class="doc-body">${bodyHtml}</div></div>`;
+  return `<div class="docpage lp">${titleHtml}<div class="doc-body">${bodyHtml}</div></div>`;
 }
 /* No school letterhead — used for the employee's own Personal Application,
    which is addressed to the school, not issued on the school's behalf. */
@@ -1314,6 +1349,33 @@ function docCOVER(rec){
   return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
 }
 
+/* ---- PF Ledger enclosure line (FL_PF Final) ---- */
+function fyLabelFromStart(y){ return `${y}-${String((y+1)%100).padStart(2,'0')}`; }
+function ledgerFYRange(rec){
+  const online = (rec.ledgerOnlineFrom||'').trim() || '2023-24';
+  let open = (rec.ledgerOpenFY||'').trim();
+  if(!open && rec.ledgerOpenBasis !== 'manual'){
+    const joinFY = fyOfDate(rec.dofj);
+    if(joinFY){
+      open = fyLabelFromStart(fyStartYear(joinFY) + (rec.ledgerOpenBasis === 'after2' ? 2 : 1));
+    } else if(rec.pfFirstDeposit){
+      open = fyOfDate(rec.pfFirstDeposit + '-01') || '';
+    }
+  }
+  const ret = (rec.ledgerRetFY||'').trim() || fyOfDate(rec.dor) || '';
+  return {open, ret, online};
+}
+function ledgerEnclosureText(rec){
+  const r = ledgerFYRange(rec);
+  const open = r.open || '____-__', ret = r.ret || '____-__';
+  const head = `PF Ledger from opening F.Y. ${esc(open)} to retirement F.Y. ${esc(ret)}`;
+  if(!r.open || !r.ret) return head + ` [offline school individual ledger up to F.Y. ${esc(fyLabelFromStart(fyStartYear(r.online)-1))}; online PF Statement from F.Y. ${esc(r.online)} onwards]`;
+  const os = fyStartYear(r.open), rs = fyStartYear(r.ret), ns = fyStartYear(r.online);
+  if(os >= ns) return head + ` [online PF Statement]`;
+  if(rs < ns)  return head + ` [offline school individual ledger]`;
+  return head + ` [offline school individual ledger: F.Y. ${esc(r.open)} to ${esc(fyLabelFromStart(ns-1))}; online PF Statement: F.Y. ${esc(r.online)} to ${esc(r.ret)}]`;
+}
+
 function flpfEnclosures(rec){
   const isKhatra = /khatra/i.test(rec.aiOfficeAddress||'');
   if(isKhatra){
@@ -1328,7 +1390,8 @@ function flpfEnclosures(rec){
       '9. No objection &amp; No liabilities certificate.',
       '10. Resolution copy adopted by M.C./Administrator Order regarding final payment of PF.',
       '11. Validity of M.C./Administrator',
-      '12. Pay Slip for the Last month in which PF deducted.'].join('<br>');
+      '12. Pay Slip for the Last month in which PF deducted.',
+      '13. ' + ledgerEnclosureText(rec) + '.'].join('<br>');
   }
   return ['1. Forwarding letter by HOI',
     '2. Sanctioned order (2 Copies)',
@@ -1336,7 +1399,8 @@ function flpfEnclosures(rec){
     '4. PF Statement of current F.Y.',
     '5. Payment authority code issued by DPPG (2 copies)',
     '6. Nomination Form',
-    '7. Non-overdrawal certificate'].join('<br>');
+    '7. Non-overdrawal certificate',
+    '8. ' + ledgerEnclosureText(rec) + '.'].join('<br>');
 }
 
 function docFLPF(rec){
@@ -1663,8 +1727,18 @@ function previewSingle(d){
   if(!rec){ alert('Select or create a record first.'); return; }
   readForm();
   document.getElementById('printArea').innerHTML = d.fn(rec);
+  applyPadGap(rec);
   document.getElementById('previewWrap').classList.add('show');
 }
+document.getElementById('padGapLive').addEventListener('input', e=>{
+  const rec = currentRecord(); if(!rec) return;
+  const v = parseFloat(e.target.value);
+  if(!isFinite(v) || v < 0) return;
+  rec.padTopGap = v;
+  document.getElementById('printArea').style.setProperty('--pad-gap', v + 'cm');
+  const f = document.getElementById('f_padTopGap'); if(f) f.value = v;
+  saveStore();
+});
 function closePreview(){ document.getElementById('previewWrap').classList.remove('show'); }
 
 document.getElementById('btnPrintAll').addEventListener('click', ()=>{
@@ -1674,6 +1748,7 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
   let html = '';
   DOCS.forEach(d=>{ html += d.fn(rec); });
   document.getElementById('printArea').innerHTML = html;
+  applyPadGap(rec);
   document.getElementById('previewWrap').classList.add('show');
 });
 
