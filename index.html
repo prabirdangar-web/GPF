@@ -64,11 +64,11 @@ table.led tfoot td{font-weight:700;background:#f7fafc;}
 /* preview / print */
 #previewWrap{display:none;position:fixed;inset:0;background:rgba(10,20,30,.55);z-index:50;overflow:auto;padding:24px;}
 #previewWrap.show{display:block;}
-#previewBar{max-width:210mm;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:8px;}
+#previewBar{max-width:230mm;margin:0 auto 10px;display:block;position:sticky;top:-24px;z-index:60;}
 #previewBar button{padding:8px 16px;border-radius:6px;border:1px solid #fff;background:var(--navy);color:#fff;cursor:pointer;font-size:12.5px;}
 #printArea{background:#fff;max-width:210mm;margin:0 auto;padding:10px;}
 
-.docpage{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto 14px;background:#fff;padding:18mm 16mm;font-family:"Lucida Bright","Lucida Serif","Book Antiqua","Palatino Linotype",Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;color:#111;position:relative;page-break-after:always;overflow:hidden;}
+.docpage{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto 14px;background:#fff;padding:18mm 16mm;font-family:"Lucida Bright","Lucida Serif","Book Antiqua","Palatino Linotype",Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;color:#111;position:relative;page-break-after:always;overflow:visible;}
 .docpage:last-child{page-break-after:auto;}
 /* School letters: no printed letterhead — blank space at top for the school's own letter-pad (gap set in Employee tab / preview bar) */
 .docpage.lp{padding-top:var(--pad-gap,7.2cm);}
@@ -99,13 +99,38 @@ table.formtbl th{background:#eef2f6;}
 .cover-school{font-size:26px;font-weight:800;color:#0b3d66;letter-spacing:.02em;margin-top:10px;}
 .cover-addr{font-size:15px;margin-top:4px;color:#333;}
 
+
+/* ---------- Word-style editor toolbar ---------- */
+#wtool{background:#f3f5f8;border:1px solid #c3cbd5;border-radius:8px;padding:6px 8px;box-shadow:0 3px 10px rgba(0,0,0,.35);}
+.wrow{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:2px 0;}
+.wgrp{display:flex;align-items:center;gap:2px;padding:0 6px;border-right:1px solid #d3d8de;flex-wrap:wrap;}
+.wgrp:last-child{border-right:none;}
+#previewBar .wb{min-width:28px;height:28px;padding:0 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:#1c2a3a;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;}
+#previewBar .wb:hover{background:#dfe7f0;border-color:#b9c6d6;}
+#previewBar .wb.on{background:#cfe0f3;border-color:#7fa6d2;}
+#previewBar .wb.txt{font-size:12px;font-weight:600;}
+#previewBar .wb.pri{background:var(--navy);color:#fff;padding:0 12px;}
+#previewBar .wb.pri:hover{background:var(--navy2);}
+#wtool select{height:28px;border:1px solid #c3cbd5;border-radius:4px;background:#fff;color:#0b2338;font-size:12px;padding:0 4px;min-width:0;}
+#wtool label{color:#1c2a3a !important;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px;}
+#wtool input[type=color]{width:26px;height:26px;padding:0;border:1px solid #c3cbd5;border-radius:4px;background:#fff;cursor:pointer;}
+#wtool input[type=number]{height:28px;border:1px solid #c3cbd5 !important;color:#0b2338;}
+#wtool .wnote{font-size:11px;color:#6b7683;}
+#wMsg{font-size:11.5px;color:#a4322a;font-weight:600;margin-left:6px;}
+#printArea .docpage{margin-bottom:14px;}
+#printArea .docpage:focus{outline:2px solid #5b9bd5;}
+#printArea img{max-width:100%;}
+#printArea ul,#printArea ol{margin:0 0 10px;padding-left:24px;}
+#printArea td,#printArea th{min-width:12px;}
+
 @media print{
   body *{visibility:hidden;}
   #printArea, #printArea *{visibility:visible;}
   #printArea{position:absolute;left:0;top:0;width:210mm;margin:0;padding:0;}
   .docpage{box-shadow:none;margin:0;width:210mm;min-height:297mm;padding:18mm 16mm;}
   @page{size:A4 portrait;margin:0;}
-  #previewBar{display:none;}
+  #previewBar{display:none !important;}
+  #printArea .docpage{margin-bottom:0;}
   .docpage.lp{padding-top:var(--pad-gap,7.2cm);}
 }
 footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;color:#7c8b9b;}
@@ -498,12 +523,97 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <div id="previewWrap">
   <div id="previewBar">
-    <span class="edithint">✎ Click anywhere on the page to edit the text before printing (edits last until you close the preview).</span>
-    <label title="Blank space kept at the top of every school letter for the school's own letter-pad">Top gap (cm)
-      <input type="number" id="padGapLive" min="0" max="20" step="0.1">
-    </label>
-    <button onclick="window.print()">🖨 Print</button>
-    <button onclick="closePreview()">✕ Close</button>
+    <div id="wtool">
+      <div class="wrow">
+        <div class="wgrp">
+          <button class="wb" data-w="undo" title="Undo (Ctrl+Z)">↶</button>
+          <button class="wb" data-w="redo" title="Redo (Ctrl+Y)">↷</button>
+        </div>
+        <div class="wgrp">
+          <select id="wFont" title="Font"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option><option value="Cambria">Cambria</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Tahoma">Tahoma</option><option value="Trebuchet MS">Trebuchet MS</option><option value="Courier New">Courier New</option><option value="Nirmala UI">Nirmala UI</option><option value="Vrinda">Vrinda</option><option value="Book Antiqua">Book Antiqua</option><option value="Garamond">Garamond</option><option value="Century Gothic">Century Gothic</option></select>
+          <select id="wSize" title="Font size (px)"><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13" selected>13</option><option value="14">14</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="48">48</option></select>
+          <button class="wb" data-w="sizeUp" title="Increase font size">A▲</button>
+          <button class="wb" data-w="sizeDown" title="Decrease font size">A▼</button>
+        </div>
+        <div class="wgrp">
+          <button class="wb" data-w="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+          <button class="wb" data-w="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+          <button class="wb" data-w="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+          <select id="wUl" title="Underline type (select text first)">
+            <option value="">Underline type…</option>
+            <option value="single">Single ____</option>
+            <option value="double">Double ═══</option>
+            <option value="thick">Thick ▬▬▬</option>
+            <option value="dotted">Dotted ·····</option>
+            <option value="dashed">Dashed - - -</option>
+            <option value="wavy">Wavy 〰〰〰</option>
+            <option value="none">Remove underline</option>
+          </select>
+          <button class="wb" data-w="strikeThrough" title="Strikethrough"><s>S</s></button>
+          <button class="wb" data-w="overline" title="Overline"><span style="text-decoration:overline">O</span></button>
+          <button class="wb" data-w="subscript" title="Subscript">x₂</button>
+          <button class="wb" data-w="superscript" title="Superscript">x²</button>
+        </div>
+        <div class="wgrp">
+          <label title="Font colour">A<input type="color" id="wColor" value="#111111"></label>
+          <label title="Highlight colour">🖍<input type="color" id="wHi" value="#ffff00"></label>
+          <button class="wb" data-w="noHi" title="Remove highlight">⌀</button>
+        </div>
+        <div class="wgrp">
+          <button class="wb" data-w="justifyLeft" title="Align left">⯇≡</button>
+          <button class="wb" data-w="justifyCenter" title="Centre">≡</button>
+          <button class="wb" data-w="justifyRight" title="Align right">≡⯈</button>
+          <button class="wb" data-w="justifyFull" title="Justify">☰</button>
+        </div>
+      </div>
+      <div class="wrow">
+        <div class="wgrp">
+          <button class="wb" data-w="insertUnorderedList" title="Bullets">• List</button>
+          <button class="wb" data-w="insertOrderedList" title="Numbering">1. List</button>
+          <button class="wb" data-w="outdent" title="Decrease indent">⇤</button>
+          <button class="wb" data-w="indent" title="Increase indent">⇥</button>
+        </div>
+        <div class="wgrp">
+          <select id="wLine" title="Line spacing"><option value="">Line spacing…</option><option>1</option><option>1.15</option><option>1.3</option><option>1.5</option><option>1.8</option><option>2</option><option>2.5</option></select>
+          <select id="wSpace" title="Space after paragraph"><option value="">Para gap…</option><option value="0">0 px</option><option value="4">4 px</option><option value="10">10 px</option><option value="16">16 px</option><option value="24">24 px</option><option value="36">36 px</option></select>
+          <select id="wLetter" title="Letter spacing"><option value="">Letter gap…</option><option value="0">Normal</option><option value="0.5px">0.5 px</option><option value="1px">1 px</option><option value="2px">2 px</option><option value="3px">3 px</option></select>
+          <select id="wCase" title="Change case"><option value="">Aa Case…</option><option value="uppercase">UPPERCASE</option><option value="lowercase">lowercase</option><option value="capitalize">Capitalize Each Word</option><option value="none">Normal</option></select>
+        </div>
+        <div class="wgrp">
+          <button class="wb txt" data-w="tblInsert" title="Insert table">▦ Table</button>
+          <button class="wb txt" data-w="rowAdd" title="Add row below">+Row</button>
+          <button class="wb txt" data-w="colAdd" title="Add column right">+Col</button>
+          <button class="wb txt" data-w="rowDel" title="Delete row">−Row</button>
+          <button class="wb txt" data-w="colDel" title="Delete column">−Col</button>
+          <button class="wb txt" data-w="tblBorder" title="Toggle table borders">▢ Border</button>
+          <label title="Cell shading (click in a cell first)">▨<input type="color" id="wCell" value="#eef2f6"></label>
+        </div>
+        <div class="wgrp">
+          <button class="wb txt" data-w="img" title="Insert image (logo / signature / seal)">🖼 Image</button>
+          <button class="wb txt" data-w="imgW" title="Width of last clicked image (mm)">↔ Img size</button>
+          <button class="wb txt" data-w="hr" title="Horizontal line">― Line</button>
+          <button class="wb txt" data-w="date" title="Insert today's date">📅 Date</button>
+          <button class="wb txt" data-w="sheet" title="Split at cursor: start a new A4 sheet">⎘ New sheet</button>
+          <button class="wb" data-w="clear" title="Clear formatting">Tx̸</button>
+          <input type="file" id="wImgFile" accept="image/*" style="display:none">
+        </div>
+      </div>
+      <div class="wrow">
+        <div class="wgrp" title="Blank area kept at the top of each sheet for the school's own letter-pad">
+          <label>Top gap <input type="number" id="padGapLive" min="0" max="20" step="0.1"> cm</label>
+          <button class="wb txt" data-lh="0">0</button><button class="wb txt" data-lh="5">5</button><button class="wb txt" data-lh="6">6</button><button class="wb txt" data-lh="7.2">7.2</button><button class="wb txt" data-lh="8">8</button><button class="wb txt" data-lh="9">9</button>
+          <button class="wb txt" data-w="lpThis" title="Turn the pad gap on/off for the sheet where the cursor is">Gap: this sheet</button>
+          <button class="wb txt" data-w="lpAll" title="Turn the pad gap on/off for all sheets">Gap: all sheets</button>
+        </div>
+        <div class="wgrp">
+          <button class="wb txt" id="wReset" title="Discard edits and regenerate from the record">↺ Reset to auto text</button>
+          <button class="wb pri" onclick="window.print()">🖨 Print</button>
+          <button class="wb pri" onclick="closePreview()">✕ Close</button>
+          <span id="wMsg"></span>
+        </div>
+      </div>
+      <div class="wnote" style="padding:2px 6px;">✎ Click on the page to edit. Edits last until you close the preview.</div>
+    </div>
   </div>
   <div id="printArea" contenteditable="true" spellcheck="false"></div>
 </div>
@@ -1728,6 +1838,7 @@ function previewSingle(d){
   readForm();
   document.getElementById('printArea').innerHTML = d.fn(rec);
   applyPadGap(rec);
+  window.__regen = ()=>previewSingle(d);
   document.getElementById('previewWrap').classList.add('show');
 }
 document.getElementById('padGapLive').addEventListener('input', e=>{
@@ -1749,8 +1860,136 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
   DOCS.forEach(d=>{ html += d.fn(rec); });
   document.getElementById('printArea').innerHTML = html;
   applyPadGap(rec);
+  window.__regen = ()=>document.getElementById('btnPrintAll').click();
   document.getElementById('previewWrap').classList.add('show');
 });
+
+/* ============================================================
+   WORD-STYLE EDITOR for the preview (#printArea)
+   ============================================================ */
+(function(){
+  const PA = document.getElementById('printArea');
+  const $id = x => document.getElementById(x);
+  let saved = null, lastImg = null;
+  const msg = t => { const m=$id('wMsg'); m.textContent=t||''; if(t) setTimeout(()=>{ if(m.textContent===t) m.textContent=''; },3200); };
+
+  document.addEventListener('selectionchange', ()=>{
+    const s = getSelection();
+    if(s.rangeCount && PA.contains(s.getRangeAt(0).commonAncestorContainer)){ saved = s.getRangeAt(0).cloneRange(); syncUi(); }
+  });
+  function restore(){
+    const s = getSelection();
+    if(saved){ s.removeAllRanges(); s.addRange(saved); }
+    return s.rangeCount>0 && PA.contains(s.getRangeAt(0).commonAncestorContainer);
+  }
+  function syncUi(){
+    try{
+      ['bold','italic','underline','strikeThrough','subscript','superscript','insertUnorderedList','insertOrderedList','justifyLeft','justifyCenter','justifyRight','justifyFull'].forEach(c=>{
+        const b=document.querySelector('#wtool .wb[data-w="'+c+'"]'); if(b) b.classList.toggle('on', document.queryCommandState(c));
+      });
+      const s=getSelection(); let n=s.anchorNode; if(n && n.nodeType===3) n=n.parentElement;
+      if(n && n.nodeType===1 && PA.contains(n)){
+        const cs=getComputedStyle(n), px=Math.round(parseFloat(cs.fontSize));
+        const sz=$id('wSize'); if(![...sz.options].some(o=>+o.value===px)){ const o=document.createElement('option'); o.value=px; o.textContent=px; sz.appendChild(o); } sz.value=px;
+        const fam=cs.fontFamily.split(',')[0].replace(/["']/g,'').trim().toLowerCase();
+        const m=[...$id('wFont').options].find(o=>o.value.toLowerCase()===fam); if(m) $id('wFont').value=m.value;
+      }
+    }catch(e){}
+  }
+  function exec(cmd,val){
+    if(!restore()){ msg('Click inside the document first.'); return false; }
+    document.execCommand('styleWithCSS',false,true);
+    document.execCommand(cmd,false,val); return true;
+  }
+  function span(styles){
+    if(!restore()){ msg('Click inside the document first.'); return; }
+    if(getSelection().isCollapsed){ msg('Select some text first.'); return; }
+    document.execCommand('styleWithCSS',false,false);
+    document.execCommand('fontSize',false,'7');
+    PA.querySelectorAll('font[size="7"]').forEach(f=>{
+      const sp=document.createElement('span'); Object.assign(sp.style,styles);
+      while(f.firstChild) sp.appendChild(f.firstChild);
+      sp.querySelectorAll('span').forEach(i=>Object.keys(styles).forEach(k=>{ i.style[k]=''; }));
+      f.replaceWith(sp);
+    });
+  }
+  function blocks(){
+    if(!restore()) return [];
+    const r=getSelection().getRangeAt(0), set=new Set();
+    PA.querySelectorAll('p,li,div,td,th,h1,h2,h3,h4').forEach(b=>{ if(b.classList.contains('docpage')) return; if(r.intersectsNode(b)) set.add(b); });
+    let out=[...set]; out=out.filter(b=>!out.some(o=>o!==b && b.contains(o)));
+    if(!out.length){ let n=r.commonAncestorContainer; if(n.nodeType===3) n=n.parentElement; const b=n.closest('p,li,div,td,th,h1,h2,h3,h4'); if(b && !b.classList.contains('docpage')) out=[b]; }
+    return out;
+  }
+  function cell(){ if(!restore()) return null; let n=getSelection().anchorNode; if(n && n.nodeType===3) n=n.parentElement; return n? n.closest('td,th'):null; }
+  function pageAtCursor(){ if(!restore()) return null; let n=getSelection().anchorNode; if(n && n.nodeType===3) n=n.parentElement; return n? n.closest('.docpage'):null; }
+
+  function act(a){
+    switch(a){
+      case 'undo': case 'redo': restore(); document.execCommand(a); break;
+      case 'bold': case 'italic': case 'underline': case 'strikeThrough': case 'subscript': case 'superscript':
+      case 'justifyLeft': case 'justifyCenter': case 'justifyRight': case 'justifyFull':
+      case 'insertUnorderedList': case 'insertOrderedList': case 'indent': case 'outdent':
+        exec(a); syncUi(); break;
+      case 'overline': span({textDecorationLine:'overline'}); break;
+      case 'sizeUp': case 'sizeDown': { const sz=$id('wSize'), n=Math.max(6,Math.min(120,(+sz.value||13)+(a==='sizeUp'?1:-1))); span({fontSize:n+'px'}); sz.value=n; break; }
+      case 'noHi': exec('hiliteColor','transparent'); break;
+      case 'clear': exec('removeFormat'); break;
+      case 'hr': exec('insertHTML','<hr style="border:0;border-top:1px solid #222;margin:10px 0;">'); break;
+      case 'date': { const d=new Date(); exec('insertText', String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear()); break; }
+      case 'tblInsert': {
+        if(!restore()){ msg('Click inside the document first.'); break; }
+        const rows=parseInt(prompt('Number of rows?','3'),10), cols=parseInt(prompt('Number of columns?','3'),10);
+        if(!(rows>0&&cols>0)) break;
+        let h='<table class="formtbl">'; for(let r=0;r<rows;r++){ h+='<tr>'; for(let c=0;c<cols;c++) h+='<td>&nbsp;</td>'; h+='</tr>'; } h+='</table><p><br></p>';
+        exec('insertHTML',h); break; }
+      case 'rowAdd': { const td=cell(); if(!td){ msg('Click inside a table cell first.'); break; } const tr=td.parentElement, nr=tr.cloneNode(true); nr.querySelectorAll('td,th').forEach(c=>{ c.innerHTML='&nbsp;'; c.removeAttribute('rowspan'); }); tr.after(nr); break; }
+      case 'colAdd': { const td=cell(); if(!td){ msg('Click inside a table cell first.'); break; } const i=td.cellIndex; td.closest('table').querySelectorAll('tr').forEach(tr=>{ const ref=tr.cells[Math.min(i,tr.cells.length-1)]; if(ref){ const nc=ref.cloneNode(false); nc.removeAttribute('colspan'); nc.removeAttribute('rowspan'); nc.innerHTML='&nbsp;'; ref.after(nc); } }); break; }
+      case 'rowDel': { const td=cell(); if(!td){ msg('Click inside a table cell first.'); break; } const t=td.closest('table'); td.parentElement.remove(); if(!t.rows.length) t.remove(); break; }
+      case 'colDel': { const td=cell(); if(!td){ msg('Click inside a table cell first.'); break; } const i=td.cellIndex, t=td.closest('table'); t.querySelectorAll('tr').forEach(tr=>{ if(tr.cells[i]) tr.cells[i].remove(); }); if(!t.querySelector('td,th')) t.remove(); break; }
+      case 'tblBorder': { const td=cell(); if(!td){ msg('Click inside a table cell first.'); break; } const has=getComputedStyle(td).borderTopStyle!=='none'; td.closest('table').querySelectorAll('td,th').forEach(c=>{ c.style.border = has?'none':'1px solid #444'; }); break; }
+      case 'img': restore(); $id('wImgFile').click(); break;
+      case 'imgW': { if(!lastImg || !PA.contains(lastImg)){ msg('Click an image first.'); break; } const cur=Math.round(lastImg.getBoundingClientRect().width/3.78); const mm=parseFloat(prompt('Image width in mm:',cur)); if(mm>0){ lastImg.style.width=mm+'mm'; lastImg.style.height='auto'; } break; }
+      case 'sheet': {
+        if(!restore()){ msg('Click where the new sheet should start.'); break; }
+        const rg=getSelection().getRangeAt(0), page=pageAtCursor(); if(!page){ msg('Click inside a sheet.'); break; }
+        const r2=document.createRange(); r2.setStart(rg.startContainer,rg.startOffset); r2.setEnd(page,page.childNodes.length);
+        const frag=r2.extractContents(), np=page.cloneNode(false); np.appendChild(frag);
+        if(!np.textContent.trim() && !np.querySelector('img,table')) np.innerHTML='<p><br></p>';
+        page.after(np); msg('New sheet created.'); break; }
+      case 'lpThis': { const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); break; } p.classList.toggle('lp'); msg(p.classList.contains('lp')?'Pad gap ON for this sheet.':'Pad gap OFF for this sheet.'); break; }
+      case 'lpAll': { const pages=[...PA.querySelectorAll('.docpage')]; const on=!pages.every(p=>p.classList.contains('lp')); pages.forEach(p=>p.classList.toggle('lp',on)); msg(on?'Pad gap ON for all sheets.':'Pad gap OFF for all sheets.'); break; }
+    }
+  }
+  const tool=$id('wtool');
+  tool.addEventListener('mousedown', e=>{ if(e.target.closest('.wb')) e.preventDefault(); });
+  tool.addEventListener('click', e=>{
+    const b=e.target.closest('.wb'); if(!b) return;
+    if(b.dataset.lh!==undefined){ const gap=$id('padGapLive'); gap.value=b.dataset.lh; gap.dispatchEvent(new Event('input')); return; }
+    if(b.dataset.w) act(b.dataset.w);
+  });
+  $id('wFont').addEventListener('change', e=>span({fontFamily:"'"+e.target.value+"', serif"}));
+  $id('wSize').addEventListener('change', e=>span({fontSize:e.target.value+'px'}));
+  $id('wUl').addEventListener('change', e=>{
+    const v=e.target.value; e.target.value=''; if(!v) return;
+    if(v==='none'){ if(restore() && document.queryCommandState('underline')) document.execCommand('underline'); span({textDecorationLine:'none'}); return; }
+    span({textDecorationLine:'underline', textDecorationStyle: v==='thick'?'solid':v, textDecorationThickness: v==='thick'?'2px':'auto', textUnderlineOffset:'2px'});
+  });
+  $id('wColor').addEventListener('input', e=>exec('foreColor',e.target.value));
+  $id('wHi').addEventListener('input', e=>exec('hiliteColor',e.target.value));
+  $id('wCell').addEventListener('input', e=>{ const td=cell(); if(!td){ msg('Click inside a table cell first.'); return; } td.style.backgroundColor=e.target.value; });
+  $id('wLine').addEventListener('change', e=>{ const v=e.target.value; e.target.value=''; if(!v) return; const b=blocks(); if(!b.length){ msg('Click inside a paragraph first.'); return; } b.forEach(x=>x.style.lineHeight=v); });
+  $id('wSpace').addEventListener('change', e=>{ const v=e.target.value; e.target.value=''; if(v==='') return; const b=blocks(); if(!b.length){ msg('Click inside a paragraph first.'); return; } b.forEach(x=>x.style.marginBottom=v+'px'); });
+  $id('wLetter').addEventListener('change', e=>{ const v=e.target.value; e.target.value=''; if(v==='') return; span({letterSpacing:v}); });
+  $id('wCase').addEventListener('change', e=>{ const v=e.target.value; e.target.value=''; if(!v) return; span({textTransform:v}); });
+  $id('wImgFile').addEventListener('change', e=>{
+    const f=e.target.files[0]; e.target.value=''; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>exec('insertHTML','<img src="'+rd.result+'" style="width:35mm;height:auto;vertical-align:middle;">'); rd.readAsDataURL(f);
+  });
+  $id('wReset').addEventListener('click', ()=>{ if(!window.__regen) return; if(confirm('Discard all your edits and regenerate this preview from the record data?')) window.__regen(); });
+  PA.addEventListener('click', e=>{ if(e.target.tagName==='IMG') lastImg=e.target; });
+  PA.addEventListener('keydown', e=>{ if(e.key==='Tab' && !e.shiftKey){ e.preventDefault(); document.execCommand('insertHTML',false,'&emsp;&emsp;'); } });
+})();
 
 /* ============================================================
    INIT
