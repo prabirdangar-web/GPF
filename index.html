@@ -1062,6 +1062,94 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
   setSyncStatus('✓ Full JSON exported', '#065f46');
 });
 
+
+/* ---- Import helpers: clear 3-button choice, always merge into the LATEST cloud copy, always back up first ---- */
+function askImportMode(n){
+  return new Promise((resolve)=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML='<div style="background:#fff;border-radius:10px;padding:18px 20px;max-width:420px;width:90%;font-family:inherit;box-shadow:0 8px 30px rgba(0,0,0,.35)">'+
+      '<div style="font-weight:700;font-size:15px;margin-bottom:8px">Import '+n+' record(s)</div>'+
+      '<div style="font-size:12.5px;line-height:1.5;margin-bottom:12px"><b>Add / Merge</b> keeps every existing record (same person is updated, new persons are added).<br><b>Replace all</b> deletes all current records first.</div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'+
+      '<button data-c="cancel" style="padding:7px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer">Cancel</button>'+
+      '<button data-c="replace" style="padding:7px 12px;border:none;background:#b91c1c;color:#fff;border-radius:6px;cursor:pointer">Replace all</button>'+
+      '<button data-c="merge" style="padding:7px 14px;border:none;background:#065f46;color:#fff;border-radius:6px;cursor:pointer;font-weight:700">Add / Merge</button>'+
+      '</div></div>';
+    ov.addEventListener('click',(e)=>{
+      const c=e.target && e.target.getAttribute && e.target.getAttribute('data-c');
+      if(c){ ov.remove(); resolve(c); }
+    });
+    document.body.appendChild(ov);
+  });
+}
+function personKey(r){
+  const n=v=>String(v||'').trim().toLowerCase();
+  if(n(r.pfAccNo)) return 'pf:'+n(r.pfAccNo);
+  if(n(r.employeeCode)) return 'ec:'+n(r.employeeCode);
+  if(n(r.staffName) && n(r.dob)) return 'nd:'+n(r.staffName)+'|'+n(r.dob);
+  return null;
+}
+async function runImport(incoming, importedCurrentId, mode){
+  try{
+    /* 1. Start from the newest cloud copy so a stale screen can never wipe other people's records. */
+    let base = records;
+    try{
+      const snap = await gpfDocRef.get({source:'server'});
+      if(snap.exists && Array.isArray(snap.data().records)) base = snap.data().records;
+    }catch(e){
+      if(!confirm('Could not read the latest cloud copy (offline?).\nContinue using the records shown on this screen?')) return;
+    }
+    /* 2. Always download a backup of what exists right now. */
+    downloadJSON({format:'GPF-FINAL-PAYMENT-JSON',version:2,type:'full-backup',exportedAt:new Date().toISOString(),currentId:currentId,records:base}, 'gpf_backup_before_import.json');
+
+    let summary='';
+    if(mode==='replace'){
+      if(!confirm('REPLACE will delete ALL '+base.length+' current record(s) (cloud copy too).\nA backup file has just been downloaded.\n\nContinue?')) return;
+      records = incoming;
+      currentId = (importedCurrentId && records.some(r=>r.id===importedCurrentId)) ? importedCurrentId : records[0].id;
+      summary='Current records were replaced by '+incoming.length+' imported record(s).';
+    }else{
+      const out = base.slice();
+      const byId = new Map(out.map((r,i)=>[r.id,i]));
+      const byKey = new Map();
+      out.forEach((r,i)=>{ const k=personKey(r); if(k && !byKey.has(k)) byKey.set(k,i); });
+      let added=0, updated=0, lastId=null;
+      incoming.forEach(r=>{
+        const k=personKey(r);
+        let idx = (k && byKey.has(k)) ? byKey.get(k) : (byId.has(r.id) && !k ? undefined : undefined);
+        if(idx===undefined && k===null && byId.has(r.id)){
+          /* no identity info: never overwrite, keep both */
+          r.id='rec_import_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+        }
+        if(idx!==undefined){
+          /* same person: fill / update from imported non-empty fields, keep other ledger years */
+          const ex=out[idx], merged={...ex};
+          Object.keys(r).forEach(f=>{ if(f==='id'||f==='ledger') return; if(r[f]!=='' && r[f]!=null) merged[f]=r[f]; });
+          merged.ledger={...(ex.ledger||{}),...(r.ledger||{})};
+          out[idx]=merged; updated++; lastId=merged.id;
+        }else{
+          if(byId.has(r.id)) r.id='rec_import_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+          out.push(r); byId.set(r.id,out.length-1);
+          if(k) byKey.set(k,out.length-1);
+          added++; lastId=r.id;
+        }
+      });
+      records = out;
+      currentId = lastId || currentId;
+      summary=added+' new record(s) added, '+updated+' existing record(s) updated. Total now: '+records.length+'.';
+    }
+    localStorage.setItem(STORE_KEY, JSON.stringify(records));
+    refreshRecordSelect(); fillForm(); buildDocGrid();
+    saveStore();
+    setSyncStatus('✓ JSON imported', '#065f46');
+    alert('Import complete.\n'+summary+'\n(A backup of the previous data was downloaded: gpf_backup_before_import.json)');
+  }catch(err){
+    console.error('JSON import error:', err);
+    alert('Import failed. Nothing was changed.');
+  }
+}
+
 document.getElementById('btnImport').addEventListener('click', ()=>{
   if(!isAdmin){ alert('Please log in as admin to import.'); return; }
   document.getElementById('fileImport').click();
@@ -1111,47 +1199,10 @@ document.getElementById('fileImport').addEventListener('change', (e)=>{
         ledger: (r.ledger && typeof r.ledger === 'object') ? r.ledger : {}
       }));
 
-      /* SAFE DEFAULT: OK = add to existing records. Replacing needs a second confirmation and downloads a backup first. */
-      const keepAndAdd = confirm('Import ' + incoming.length + ' record(s)?\n\nOK = ADD to the current records (nothing is deleted)\nCancel = REPLACE all current records');
-      let mode = !keepAndAdd;
-      if(mode){
-        if(!confirm('REPLACE will delete ALL current records (cloud copy too if you are logged in).\nA full backup file will be downloaded first.\n\nContinue with REPLACE?')) return;
-        downloadJSON({format:'GPF-FINAL-PAYMENT-JSON',version:2,type:'full-backup',exportedAt:new Date().toISOString(),currentId:currentId,records:records}, 'gpf_backup_before_replace.json');
-      }
-
-      if(mode){
-        records = incoming;
-        currentId = importedCurrentId && records.some(r=>r.id===importedCurrentId)
-          ? importedCurrentId
-          : records[0].id;
-      }else{
-        const existingIds = new Set(records.map(r=>r.id));
-        const added = [];
-        incoming.forEach(r=>{
-          if(existingIds.has(r.id)){
-            /* Give duplicate imported records a new ID so no record is lost. */
-            r.id = 'rec_import_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-          }
-          existingIds.add(r.id);
-          added.push(r);
-        });
-        records = records.concat(added);
-        currentId = added[0]?.id || currentId;
-      }
-
-      localStorage.setItem(STORE_KEY, JSON.stringify(records));
-      refreshRecordSelect();
-      fillForm();
-      buildDocGrid();
-
-      /* Push imported data to Firestore when logged in. */
-      saveStore();
-
-      setSyncStatus('✓ JSON imported', '#065f46');
-      alert(
-        'Successfully imported ' + incoming.length + ' record(s).\\n' +
-        (mode ? 'Current records were replaced.' : 'Records were merged.')
-      );
+      askImportMode(incoming.length).then((choice)=>{
+        if(choice==='cancel') return;
+        runImport(incoming, importedCurrentId, choice);
+      });
     }catch(err){
       console.error('JSON import error:', err);
       alert('Invalid or unsupported JSON file.\\nPlease use a JSON backup exported from this application.');
