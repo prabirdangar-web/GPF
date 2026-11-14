@@ -1543,7 +1543,7 @@ function docCOVER(rec){
       <div class="cover-meta">[${retireVerb(rec)} on ${B(retDateStr(rec))}]</div>
       <div class="cover-meta">MOBILE NO OF THE INCUMBENT: ${B(esc(rec.employeeMob))}</div>
     </div>`;
-  return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
+  return `<div class="docpage">${block}</div>`;
 }
 
 /* ---- PF Ledger enclosure line (FL_PF Final) ---- */
@@ -1928,7 +1928,7 @@ function docCOVERInt(rec){
       <div class="cover-meta">[Retired on ${B(intRetLine(rec))}]</div>
       <div class="cover-meta">MOBILE NO OF THE INCUMBENT: ${B(esc(rec.employeeMob))}</div>
     </div>`;
-  return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
+  return `<div class="docpage">${block}</div>`;
 }
 
 function flintEnclosures(rec){
