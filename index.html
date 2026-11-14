@@ -70,6 +70,15 @@ table.led tfoot td{font-weight:700;background:#f7fafc;}
 
 .docpage{width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto 14px;background:#fff;padding:18mm 16mm;font-family:"Lucida Bright","Lucida Serif","Book Antiqua","Palatino Linotype",Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;color:#111;position:relative;page-break-after:always;overflow:visible;}
 .docpage:last-child{page-break-after:auto;}
+.docpage.land{width:297mm;min-height:209mm;padding:10mm 14mm;font-size:12px;line-height:1.35;page:land;}
+.docpage.land .doc-title{margin:2px 0 8px;font-size:13.5px;}
+.docpage.land .doc-ref{margin-bottom:6px;}
+.docpage.land .doc-body p{margin:0 0 6px;}
+.docpage.land table.formtbl{margin:6px 0;}
+.docpage.land table.formtbl th,.docpage.land table.formtbl td{padding:4px 5px;}
+.docpage.land .sig-row{margin-top:18px;}
+.docpage.land .sig-line{margin-top:22px;}
+#printArea:has(.docpage.land){max-width:297mm;}
 /* School letters: no printed letterhead — blank space at top for the school's own letter-pad (gap set in Employee tab / preview bar) */
 .docpage.lp{padding-top:var(--pad-gap,7.2cm);}
 #printArea[contenteditable=true]{outline:none;}
@@ -124,11 +133,14 @@ table.formtbl th{background:#eef2f6;}
 #printArea td,#printArea th{min-width:12px;}
 
 @media print{
-  body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
-  #printArea{position:absolute;left:0;top:0;width:210mm;margin:0;padding:0;}
+  html,body{margin:0 !important;padding:0 !important;background:#fff !important;height:auto !important;overflow:visible !important;}
+  body > *:not(#previewWrap){display:none !important;}
+  #previewWrap{position:static !important;display:block !important;inset:auto !important;width:auto !important;height:auto !important;max-height:none !important;overflow:visible !important;background:#fff !important;padding:0 !important;margin:0 !important;}
+  #printArea{position:static !important;width:auto;max-width:none !important;margin:0;padding:0;}
   .docpage{box-shadow:none;margin:0;width:210mm;min-height:297mm;padding:18mm 16mm;}
+  .docpage.land{width:297mm;min-height:209mm;padding:10mm 14mm;page:land;}
   @page{size:A4 portrait;margin:0;}
+  @page land{size:A4 landscape;margin:0;}
   #previewBar{display:none !important;}
   #printArea .docpage{margin-bottom:0;}
   .docpage.lp{padding-top:var(--pad-gap,7.2cm);}
@@ -1862,7 +1874,7 @@ function docNOM(rec){
     </tr>`;
   }
   const body = `
-  <table class="formtbl" style="font-size:10.6px;">
+  <table class="formtbl" style="font-size:11.5px;">
     <tr><th>Name &amp; full address of the Nominee(s)</th><th>Relationship with subscriber</th><th>Date of Birth</th><th>Share payable</th><th>Contingencies invalidating nomination</th><th>Name, address &amp; relationship of alternate</th><th>Reason if not a family member</th></tr>
     ${nomRow(1)}${nomRow(2)}
   </table>
@@ -1874,7 +1886,7 @@ function docNOM(rec){
   <p style="font-weight:700;margin-top:26px;">Space for use by the Head of the Institution</p>
   <p>Nomination by ${pron(rec,'sriSmt')} ${B(esc(rec.staffName))}, ${B(esc(rec.designation))} of ${esc(rec.schoolName)}.</p>
   <p>Date of Receipt of Nomination: ${fmtDate(rec.nomReceiptDate)}</p>`;
-  const doc = pageWrapNoLetterhead(rec, title, body);
+  const doc = pageWrapNoLetterhead(rec, title, body).replace('<div class="docpage">','<div class="docpage land">');
   return doc.replace('</div></div>', `${sigRow(rec, '', 'Signature of the Head of the Institution<br>Designation: '+esc(rec.hoiStatus))}</div></div>`);
 }
 
