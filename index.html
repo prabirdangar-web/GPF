@@ -2177,7 +2177,7 @@ function docSetIds(rec){
   }
   const res = adm ? ['admn'] : ['mcreng','mcrbng'];
   return off === 'khatra'
-    ? ['cover','flpf','app','formfinal','ixa','nolia', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
+    ? ['cover','flpf','app','formfinal','ixa','nolia','nom', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
     : ['cover','flpf','nolia','nom','ledger'];
 }
 function docSetLabel(rec){
