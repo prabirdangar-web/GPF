@@ -2147,6 +2147,7 @@ const DOCS_INT = [
   {id:'i_validity', label:'MC / Administrator Validity Certificate', desc:'Wording follows the Administrative Status selected.', fn:docValidity},
   {id:'i_delay', label:'Delay Declaration', desc:'Late-submission declaration for the interest period.', fn:docDelayInt},
   {id:'i_mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate for electronic payment.', fn:docMandate},
+  {id:'i_nom', label:'Nomination Form (First Schedule)', desc:'GPF nomination form with nominee table.', fn:docNOM},
   {id:'i_ledger', label:'GPF Ledger / Interest Statement', desc:'Year-wise interest ledger, computed live.', fn:docLedger},
 ];
 /* ============================================================
@@ -2173,11 +2174,11 @@ function docSetIds(rec){
     const res = adm ? ['i_admn'] : ['i_mceng','i_mcbng'];
     return off === 'khatra'
       ? ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia', ...res, 'i_validity', ...(delayed?['i_delay']:[]), 'i_mandate','i_ledger']
-      : ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_ledger'];
+      : ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_nom','i_ledger'];
   }
   const res = adm ? ['admn'] : ['mcreng','mcrbng'];
   return off === 'khatra'
-    ? ['cover','flpf','app','formfinal','ixa','nolia','nom', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
+    ? ['cover','flpf','app','formfinal','ixa','nolia', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
     : ['cover','flpf','nolia','nom','ledger'];
 }
 function docSetLabel(rec){
