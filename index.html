@@ -341,6 +341,7 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
       <div class="field"><label>Month of Introduction of P.F.</label><input type="month" data-f="pfIntroMonth"></div>
       <div class="field"><label>Month of First Deposit of P.F.</label><input type="month" data-f="pfFirstDeposit"></div>
       <div class="field"><label>Last Month PF Contributed</label><input type="month" data-f="lastMonthContributed"></div>
+      <div class="field"><label>Pay Slip month (PF last deducted)</label><input data-f="payslipMonth" placeholder="e.g. July-24"></div>
       <div class="field wide"><label>Applied Excluding Interest of the Financial Year(s)</label><input data-f="excludingFY" placeholder="e.g. 2025-26,2026-27"></div>
       <div class="field wide"><label>Interest Upto the Financial Year Included</label><input data-f="interestUptoFY" placeholder="e.g. 2024-25"></div>
       <div class="field"><label>Amount Claimed (Principal, ₹)</label><input type="number" data-f="amountClaimed" id="f_amountClaimed"></div>
@@ -544,7 +545,11 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <!-- ================= DOCUMENTS TAB ================= -->
 <section class="panel" id="panel-documents">
-  <button class="printall" id="btnPrintAll">🖨 Preview &amp; Print Full Bundle (all documents in workbook order)</button>
+  <div id="docSetBar" style="margin:0 0 10px;padding:8px 12px;background:#eef3f9;border:1px solid #c3cbd5;border-radius:8px;font-size:12.5px;line-height:1.5;">
+    <div id="docSetNote"></div>
+    <label style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;"><input type="checkbox" id="docShowAll"> Show every document (ignore the case-wise set)</label>
+  </div>
+  <button class="printall" id="btnPrintAll">🖨 Preview &amp; Print Full Bundle (this case's documents in order)</button>
   <div class="docgrid" id="docGrid"></div>
 </section>
 
@@ -752,7 +757,7 @@ function blankRecord(){
     lastIncrementDate:'', ppoNo:'', ppoMemoNo:'',
     pfIntroMonth:'', pfFirstDeposit:'', lastMonthContributed:'', excludingFY:'', interestUptoFY:'',
     amountClaimed:'', treasury:'',
-    claimType:'final', intFY:'', intAmount:'', paidPrincipal:'', paidInterest:'', paidIntFY:'', intApplicationId:'', intSanctionId:'', intSanctionedAmount:'', intAuthorityId:'',
+    claimType:'final', payslipMonth:'', intFY:'', intAmount:'', paidPrincipal:'', paidInterest:'', paidIntFY:'', intApplicationId:'', intSanctionId:'', intSanctionedAmount:'', intAuthorityId:'',
     applicationId:'', sanctionAdmin:'', sanctionId:'', sanctionedAmount:'', fpAuthorityId:'',
     bankName:'', bankBranch:'', bankAcNo:'', bankIFSC:'', bankMICR:'', bankAcType:'SAVINGS',
     spouseName:'', spouseRel:'', spouseStatus:'', spouseDob:'', spouseAddress:'',
@@ -1565,7 +1570,7 @@ function ledgerFYRange(rec){
 function ledgerEnclosureText(rec){
   const r = ledgerFYRange(rec);
   const open = r.open || '____-__', ret = r.ret || '____-__';
-  const head = `PF Ledger from opening F.Y. ${esc(open)} to retirement F.Y. ${esc(ret)}`;
+  const head = `PF ledgers copy yearwise individual from opening F.Y. ${esc(open)} to retirement F.Y. ${esc(ret)}`;
   if(!r.open || !r.ret) return head + ` [offline school individual ledger up to F.Y. ${esc(fyLabelFromStart(fyStartYear(r.online)-1))}; online PF Statement from F.Y. ${esc(r.online)} onwards]`;
   const os = fyStartYear(r.open), rs = fyStartYear(r.ret), ns = fyStartYear(r.online);
   if(os >= ns) return head + ` [online PF Statement]`;
@@ -1573,31 +1578,52 @@ function ledgerEnclosureText(rec){
   return head + ` [offline school individual ledger: F.Y. ${esc(r.open)} to ${esc(fyLabelFromStart(ns-1))}; online PF Statement: F.Y. ${esc(r.online)} to ${esc(r.ret)}]`;
 }
 
+/* Treasury / sub-division of the case: the A.I. office decides it; the treasury name is the fallback. */
+function caseOffice(rec){
+  const a = (rec.aiOfficeAddress||'') + ' ' + (rec.treasury||'');
+  if(/khatra/i.test(rec.aiOfficeAddress||'')) return 'khatra';
+  if(/sadar|bankura\s*sub/i.test(rec.aiOfficeAddress||'')) return 'sadar';
+  if(/khatra|BAC/i.test(rec.treasury||'')) return 'khatra';
+  return 'sadar';
+}
+function payslipText(rec, base){
+  const m = String(rec.payslipMonth||'').trim();
+  return m ? base + ' ' + esc(m) : base;
+}
+function delayEnclosure(rec){
+  return String(rec.delayReason||'').trim() ? 'Declaration for late submission.' : 'Declaration for late submission. [N.A.]';
+}
+function numList(arr){ return arr.map((t,i)=>`${i+1}. ${t}`).join('<br>'); }
+
 function flpfEnclosures(rec){
-  const isKhatra = /khatra/i.test(rec.aiOfficeAddress||'');
-  if(isKhatra){
-    return ['1. Incumbent\'s application',
-      '2. Filled up prescribed application for final payment of P.F.',
-      '3. Filled up Form IX-A with declaration.',
-      '4. Copy of Application ID',
-      '5. Copy of Sanction Order',
-      '6. Copy of Final Payment Authority',
-      '7. Approval(s) of appointment of Incumbent.',
-      '8. Certificate regarding D.O.B. / Copy of PPO',
-      '9. No objection &amp; No liabilities certificate.',
-      '10. Resolution copy adopted by M.C./Administrator Order regarding final payment of PF.',
-      '11. Validity of M.C./Administrator',
-      '12. Pay Slip for the Last month in which PF deducted.',
-      '13. ' + ledgerEnclosureText(rec) + '.'].join('<br>');
+  if(caseOffice(rec) === 'khatra'){
+    return numList([
+      "Incumbent's application",
+      'Filled up prescribed application for final payment of P.F.',
+      'Filled up Form IX-A with declaration.',
+      'Copy of Application ID',
+      'Copy of Sanction Order',
+      'Copy of Final Payment Authority',
+      'Approval(s) of appointment of Incumbent.',
+      'Certificate regarding D.O.B. / Copy of PPO',
+      'No objection &amp; No liabilities certificate.',
+      'Resolution copy adopted by M.C./Administrator Order regarding final payment of PF.',
+      'Validity of M.C./Administrator',
+      payslipText(rec, 'Pay Slip for the Last month in which PF deducted') + '.',
+      ledgerEnclosureText(rec) + '.',
+      'Cause of delay late submission if applicable'
+    ]);
   }
-  return ['1. Forwarding letter by HOI',
-    '2. Sanctioned order (2 Copies)',
-    '3. Online Application (1 copy)',
-    '4. PF Statement of current F.Y.',
-    '5. Payment authority code issued by DPPG (2 copies)',
-    '6. Nomination Form',
-    '7. Non-overdrawal certificate',
-    '8. ' + ledgerEnclosureText(rec) + '.'].join('<br>');
+  return numList([
+    'Forwarding letter by HOI',
+    'Sanctioned order (2 Copies)',
+    'Online Application (1 copy)',
+    'PF Statement of current F.Y.',
+    'Payment authority code issued by DPPG (2 copies)',
+    'Nomination Form',
+    'Non-overdrawal certificate',
+    ledgerEnclosureText(rec) + '.'
+  ]);
 }
 
 function docFLPF(rec){
@@ -1932,20 +1958,34 @@ function docCOVERInt(rec){
 }
 
 function flintEnclosures(rec){
-  const L = [
-    "Incumbent's application",
-    "Filled up prescribed application for final payment of P.F.",
-    "Filled up Form IX-A",
-    "Incumbent's Approval(s) of appointment",
-    "Certificate regarding D.O.B. / Copy of PPO",
-    "Sanctioning Memos regarding Final / Interest payment of P.F.",
-    "No objection &amp; no liabilities certificate",
-    "Administrator Order / MCR copy regarding payment of due interest of P.F.",
-    "Validity of M.C. / Administrator",
-    "Pay Slip of the month in which PF was last deducted",
-    "Mandate form filled up by the Payee for e-Payment along with copy of AADHAAR and Bank A/c documents (cancelled cheque / 1st page of pass book) and Mobile no. of the incumbent"
-  ];
-  return L.map((t,i)=>`${i+1}. ${t}`).join('<br>');
+  if(caseOffice(rec) === 'khatra'){
+    return numList([
+      "Incumbent's application",
+      'Filled up prescribed application for final payment of P.F.',
+      'Filled up Form IX-A.',
+      "Incumbent's Approval(s) of appointment.",
+      'Certificate regarding D.O.B. / Copy of PPO',
+      'Sanctioning Memos regarding Final / Interest payment of P.F.',
+      'No objection &amp; no liabilities certificate.',
+      'Administrator Order / MCR copy regarding payment of due interest of P.F.',
+      'Validity of M.C./Administrator.',
+      payslipText(rec, 'Pay Slip of the month in which PF last deducted') + '.',
+      'Mandate form filled up by the Payee for e-Payment along with copy of AADHAR and Bank A/c documents (cancelled cheque/1st page of pass book) and Mobile no of the incumbents.',
+      'Copy of Application ID (NGIPF)',
+      'Copy of Sanction Order (NGIPF)',
+      'Copy of Final Payment Authority (NGIPF)',
+      delayEnclosure(rec)
+    ]);
+  }
+  return numList([
+    'Forwarding letter by HOI',
+    'Sanctioned order (2 Copies)',
+    'Online Application (1 copy)',
+    'PF Statement of current F.Y.',
+    'Payment authority code issued by DPPG (2 copies)',
+    "Incumbent's prayer for payment of due interest, Particulars and Form IX-A",
+    'Non-overdrawal certificate'
+  ]);
 }
 
 function docFLInt(rec){
@@ -2109,7 +2149,56 @@ const DOCS_INT = [
   {id:'i_mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate for electronic payment.', fn:docMandate},
   {id:'i_ledger', label:'GPF Ledger / Interest Statement', desc:'Year-wise interest ledger, computed live.', fn:docLedger},
 ];
-function activeDocs(){ return isInt(currentRecord()) ? DOCS_INT : DOCS; }
+/* ============================================================
+   CASE-WISE DOCUMENT SETS
+   Claim type (Final Payment / Due Interest) x A.I. of Schools sub-division (Sadar / Khatra).
+   Edit the id lists below to change what each case prints.
+   Administrator -> HOI Report & Administrator Order ; President [M.C.] / Ad-hoc -> MC Resolution (Eng + Bng).
+   ============================================================ */
+let showAllDocs = false;
+function officeKind(rec){
+  const a = (rec && rec.aiOfficeAddress) || '';
+  if(/khatra/i.test(a)) return 'khatra';
+  if(/sadar/i.test(a)) return 'sadar';
+  if(rec && /khatra|BAC/i.test(rec.treasury||'')) return 'khatra';
+  if(rec && /bankura|BAA/i.test(rec.treasury||'')) return 'sadar';
+  return '';
+}
+function adminIsAdministrator(rec){ return /^\s*administrator\s*$/i.test((rec && rec.adminStatus) || ''); }
+function docSetIds(rec){
+  const off = officeKind(rec); if(!off) return null;
+  const adm = adminIsAdministrator(rec);
+  const delayed = !!String(rec.delayReason||'').trim();
+  if(isInt(rec)){
+    const res = adm ? ['i_admn'] : ['i_mceng','i_mcbng'];
+    return off === 'khatra'
+      ? ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia', ...res, 'i_validity', ...(delayed?['i_delay']:[]), 'i_mandate','i_ledger']
+      : ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_ledger'];
+  }
+  const res = adm ? ['admn'] : ['mcreng','mcrbng'];
+  return off === 'khatra'
+    ? ['cover','flpf','app','formfinal','ixa','nolia', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
+    : ['cover','flpf','nolia','nom','ledger'];
+}
+function docSetLabel(rec){
+  const off = officeKind(rec);
+  return (isInt(rec) ? 'Due Interest' : 'Final Payment') + (off ? ' / ' + (off === 'khatra' ? 'Khatra' : 'Sadar') + ' Sub-Division' : '');
+}
+function activeDocs(){
+  const rec = currentRecord();
+  const all = isInt(rec) ? DOCS_INT : DOCS;
+  const ids = docSetIds(rec);
+  if(showAllDocs || !ids) return all;
+  return all.filter(d => ids.includes(d.id));
+}
+function updateDocSetNote(){
+  const rec = currentRecord(), el = document.getElementById('docSetNote'); if(!el) return;
+  const all = isInt(rec) ? DOCS_INT : DOCS, ids = docSetIds(rec);
+  if(!ids){ el.innerHTML = '<b>Select the A.I. of Schools (S.E.) office</b> in the Employee &amp; School Data tab (Sadar / Khatra) to get the case-wise document set. Showing every document for now.'; return; }
+  if(showAllDocs){ el.innerHTML = '<b>' + docSetLabel(rec) + '</b> — showing every document (' + all.length + ').'; return; }
+  const n = all.filter(d=>ids.includes(d.id)).length;
+  el.innerHTML = '<b>' + docSetLabel(rec) + '</b> — ' + n + ' document(s) for this case.';
+}
 
 /* ---- claim-type UI ---- */
 function applyClaimTypeUI(){
@@ -2118,9 +2207,14 @@ function applyClaimTypeUI(){
   if(box) box.style.display = isInt(rec) ? '' : 'none';
   const note = document.getElementById('claimNote');
   if(note) note.textContent = isInt(rec)
-    ? 'Due-interest mode: the Generate Documents tab now produces the interest packet (same set as the PF_INTT_NGIPF workbook).'
-    : 'Final-payment mode: the standard 15-document final-payment bundle.';
+    ? 'Due-interest mode: the Generate Documents tab produces the interest packet for the selected A.I. office (Sadar / Khatra).'
+    : 'Final-payment mode: the Generate Documents tab produces the final-payment bundle for the selected A.I. office (Sadar / Khatra).';
 }
+document.getElementById('docShowAll').addEventListener('change', (e)=>{ showAllDocs = e.target.checked; buildDocGrid(); });
+['aiOfficeAddress','adminStatus'].forEach(f=>{
+  const el = document.querySelector('[data-f="'+f+'"]');
+  if(el) el.addEventListener('change', ()=>{ readForm(); buildDocGrid(); });
+});
 document.getElementById('f_claimType').addEventListener('change', ()=>{
   readForm(); applyClaimTypeUI(); buildDocGrid();
 });
@@ -2224,6 +2318,7 @@ const DOCS = [
 ];
 
 function buildDocGrid(){
+  updateDocSetNote();
   const grid = document.getElementById('docGrid');
   grid.innerHTML = '';
   activeDocs().forEach(d=>{
