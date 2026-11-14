@@ -190,7 +190,7 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <header class="app">
   <div>
-    <h1>GPF Final Payment — Document Generation Suite</h1>
+    <h1>GPF Final Payment &amp; Due Interest — Document Generation Suite</h1>
     <div class="sub">Taldangra Fulmati High School (H.S.) &nbsp;•&nbsp; District: Bankura &nbsp;•&nbsp; Generated from PF_ALL_Final_Payment_BANKURA structure</div>
   </div>
   <div class="toolbar">
@@ -200,6 +200,7 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
     <button id="btnDelete" class="danger admin-only">🗑 Delete</button>
     <button id="btnSaveJSON">💾 Save JSON</button>
     <button id="btnExport">⬇ Export JSON</button>
+    <button id="btnExportXls" title="Download every document of the current mode as one Excel workbook">📊 Export Excel</button>
     <label style="display:flex;align-items:center;">
       <input type="file" id="fileImport" accept="application/json" style="display:none;">
       <button id="btnImport" type="button">⬆ Import JSON</button>
@@ -218,6 +219,36 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
 
 <!-- ================= EMPLOYEE TAB ================= -->
 <section class="panel active" id="panel-employee">
+
+  <fieldset>
+    <legend>Claim Type</legend>
+    <div class="grid">
+      <div class="field wide"><label>What are you preparing?</label>
+        <select data-f="claimType" id="f_claimType">
+          <option value="final">Final Payment of GPF (standard bundle)</option>
+          <option value="interest">Payment of Due Interest (after DPPG credits interest)</option>
+        </select>
+        <div class="hint" id="claimNote"></div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset id="intFieldset" style="display:none;">
+    <legend>Due Interest Claim (used only in Due-Interest mode)</legend>
+    <div class="grid">
+      <div class="field"><label>Interest Financial Year</label><input data-f="intFY" placeholder="auto from Date of Retirement, e.g. 2024-25"></div>
+      <div class="field"><label>Due Interest Amount (₹) — as credited by DPPG</label><input type="number" data-f="intAmount"></div>
+      <div class="field wide" style="align-self:end;"><button type="button" id="btnFetchInt" style="padding:8px 12px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;font-size:12px;">🔄 Calculate interest from Ledger tab (retirement-month cut-off)</button>
+        <div class="hint">Calculated figure is only an estimate; type the amount DPPG actually credited before printing.</div></div>
+      <div class="field"><label>Final Payment already paid — Principal (₹)</label><input type="number" data-f="paidPrincipal"></div>
+      <div class="field"><label>Interest already paid with it (₹)</label><input type="number" data-f="paidInterest"></div>
+      <div class="field"><label>Interest paid period (F.Y.)</label><input data-f="paidIntFY" placeholder="e.g. 2022-23 (leave blank if none)"></div>
+      <div class="field wide"><label>Interest Application ID &amp; Date</label><input data-f="intApplicationId"></div>
+      <div class="field wide"><label>Interest Sanction ID &amp; Date</label><input data-f="intSanctionId"></div>
+      <div class="field"><label>Sanctioned Interest Amount by DPPG (₹)</label><input type="number" data-f="intSanctionedAmount"></div>
+      <div class="field wide"><label>Interest Final Payment Authority ID &amp; Date</label><input data-f="intAuthorityId"></div>
+    </div>
+  </fieldset>
 
   <fieldset>
     <legend>School / Office</legend>
@@ -721,6 +752,7 @@ function blankRecord(){
     lastIncrementDate:'', ppoNo:'', ppoMemoNo:'',
     pfIntroMonth:'', pfFirstDeposit:'', lastMonthContributed:'', excludingFY:'', interestUptoFY:'',
     amountClaimed:'', treasury:'',
+    claimType:'final', intFY:'', intAmount:'', paidPrincipal:'', paidInterest:'', paidIntFY:'', intApplicationId:'', intSanctionId:'', intSanctionedAmount:'', intAuthorityId:'',
     applicationId:'', sanctionAdmin:'', sanctionId:'', sanctionedAmount:'', fpAuthorityId:'',
     bankName:'', bankBranch:'', bankAcNo:'', bankIFSC:'', bankMICR:'', bankAcType:'SAVINGS',
     spouseName:'', spouseRel:'', spouseStatus:'', spouseDob:'', spouseAddress:'',
@@ -765,6 +797,8 @@ function fillForm(){
   syncPresetSelect('f_spouseRelSel', rec.spouseRel, ['WIFE','HUSBAND'], true);
   syncPresetSelect('f_child1RelSel', rec.child1Rel, ['SON','DAUGHTER'], true);
   syncPresetSelect('f_child2RelSel', rec.child2Rel, ['SON','DAUGHTER'], true);
+  if(!rec.claimType){ rec.claimType='final'; document.getElementById('f_claimType').value='final'; }
+  applyClaimTypeUI();
 }
 
 function syncPresetSelect(selectId, currentValue, knownValues, blankIsBlank){
@@ -1077,11 +1111,13 @@ document.getElementById('fileImport').addEventListener('change', (e)=>{
         ledger: (r.ledger && typeof r.ledger === 'object') ? r.ledger : {}
       }));
 
-      const mode = confirm(
-        'Import ' + incoming.length + ' record(s)?\\n\\n' +
-        'OK = REPLACE current records\\n' +
-        'Cancel = MERGE with current records'
-      );
+      /* SAFE DEFAULT: OK = add to existing records. Replacing needs a second confirmation and downloads a backup first. */
+      const keepAndAdd = confirm('Import ' + incoming.length + ' record(s)?\n\nOK = ADD to the current records (nothing is deleted)\nCancel = REPLACE all current records');
+      let mode = !keepAndAdd;
+      if(mode){
+        if(!confirm('REPLACE will delete ALL current records (cloud copy too if you are logged in).\nA full backup file will be downloaded first.\n\nContinue with REPLACE?')) return;
+        downloadJSON({format:'GPF-FINAL-PAYMENT-JSON',version:2,type:'full-backup',exportedAt:new Date().toISOString(),currentId:currentId,records:records}, 'gpf_backup_before_replace.json');
+      }
 
       if(mode){
         records = incoming;
@@ -1800,6 +1836,322 @@ function docLedger(rec){
 }
 
 /* ============================================================
+   DUE-INTEREST CLAIM MODE  (claimType === 'interest')
+   Documents mirror the PF_INTT_NGIPF workbook: FL_PF Intt, APP_PF Intt,
+   Admn Order, BNG MC, Form_Final, IX-A, Cer_NO_LIA, Validity, Delay,
+   Mandate, COVER and the Ledger.
+   ============================================================ */
+function isInt(rec){ return !!rec && rec.claimType === 'interest'; }
+function intFYof(rec){ return ((rec.intFY||'').trim()) || (rec.dor ? (fyOfDate(rec.dor)||'') : ''); }
+function intPeriodStr(rec){
+  const fy = intFYof(rec); if(!fy) return '';
+  const sy = fyStartYear(fy); if(!sy) return '';
+  const from = `${sy}-04-01`; let to = `${sy+1}-03-31`;
+  if(rec.dor && rec.dor >= from && rec.dor < to) to = rec.dor;   // interest stops at retirement month
+  return fmtDate(from) + ' to ' + fmtDate(to);
+}
+function intAmtNum(rec){ return Math.round(parseFloat(rec.intAmount)||0); }
+function intWords(rec){ return numberToWords(intAmtNum(rec)); }
+function intPaidSentence(rec){
+  const p = Math.round(parseFloat(rec.paidPrincipal)||0);
+  if(!p) return '';
+  const i = Math.round(parseFloat(rec.paidInterest)||0);
+  let s = `an amount of ${B(money(p))} [Rupees ${B(numberToWords(p))}] as Final Payment`;
+  if(i && rec.paidIntFY) s += ` and an amount of ${B(money(i))} [Rupees ${B(numberToWords(i))}] as interest part for the period ${B(esc(rec.paidIntFY))}`;
+  return s + ` has been paid in favour of ${pron(rec,'himHer')} towards Final Payment of P.F., excluding the interest part accrued in the period ${B(intFYof(rec))}`;
+}
+function intRetLine(rec){ return `${fmtDate(rec.dor)} (a.n.) due to ${esc(rec.causeOfClaim).toLowerCase()}`; }
+function intSubjLine(rec){ return `Payment of due part of Interest in GPF account accrued in the period ${B(intFYof(rec))} in favour of ${B(esc(rec.staffName))}, retired Ex-${esc(rec.designation)} of this school.`; }
+
+function docCOVERInt(rec){
+  const block = `
+    <div class="watermark-cover">
+      <div class="cover-meta">e-mail ID: ${esc(rec.schoolMailId)}</div>
+      <div class="cover-meta">Contact No. ${esc(rec.hoiMobile)} (HOI)</div>
+      <div class="cover-school" style="margin-top:10px;">${esc(rec.schoolName).toUpperCase()}</div>
+      <div class="cover-addr">${esc(rec.schoolAddress)}</div>
+      <div class="cover-title">PAYMENT OF DUE PART OF INTEREST<br>FROM P.F. A/C ACCRUED IN THE PERIOD ${esc(intPeriodStr(rec))}<br>during the F.Y. ${esc(intFYof(rec))}</div>
+      <div class="cover-meta" style="margin-top:6px;">FROM P.F. A/C OF</div>
+      <div class="cover-name">${B(esc(rec.staffName).toUpperCase())}; Ex-${esc(rec.designation).toUpperCase()}</div>
+      <div class="cover-meta" style="margin-top:10px;">NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</div>
+      <div class="cover-meta">[Retired on ${B(intRetLine(rec))}]</div>
+      <div class="cover-meta">MOBILE NO OF THE INCUMBENT: ${B(esc(rec.employeeMob))}</div>
+    </div>`;
+  return `<div class="docpage">${block}<hr style="margin:22px 0;border:none;border-top:1px dashed #999;">${block}</div>`;
+}
+
+function flintEnclosures(rec){
+  const L = [
+    "Incumbent's application",
+    "Filled up prescribed application for final payment of P.F.",
+    "Filled up Form IX-A",
+    "Incumbent's Approval(s) of appointment",
+    "Certificate regarding D.O.B. / Copy of PPO",
+    "Sanctioning Memos regarding Final / Interest payment of P.F.",
+    "No objection &amp; no liabilities certificate",
+    "Administrator Order / MCR copy regarding payment of due interest of P.F.",
+    "Validity of M.C. / Administrator",
+    "Pay Slip of the month in which PF was last deducted",
+    "Mandate form filled up by the Payee for e-Payment along with copy of AADHAAR and Bank A/c documents (cancelled cheque / 1st page of pass book) and Mobile no. of the incumbent"
+  ];
+  return L.map((t,i)=>`${i+1}. ${t}`).join('<br>');
+}
+
+function docFLInt(rec){
+  const title = `<div class="doc-ref">To<br>The A.I. of Schools (S.E.) [${esc(rec.aiOfficeCode)}]<br>${esc(rec.aiOfficeAddress)}</div>`;
+  const sanc = (parseFloat(rec.intSanctionedAmount)||0) || intAmtNum(rec);
+  const body = `
+    <p><b>Subject:</b> ${intSubjLine(rec)}</p>
+    <p><b>Ref:</b> NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</p>
+    <p>Sir,</p>
+    <p>In connection with the subject stated above I would like to submit herewith the necessary papers for payment of due part of Interest in P.F. a/c accrued in the period ${B(intFYof(rec))} in favour of ${B(esc(rec.staffName))} ; Ex-${esc(rec.designation)} of this school as per rule due to ${pron(rec,'hisHer')} ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} (a.n.) [for the period ${B(intPeriodStr(rec))}].</p>
+    <p>It is respectfully submitted that the Application for Interest Payment for the aforesaid period of Provident Fund bearing Application ID ${B(esc(rec.intApplicationId))} has been duly processed and sanctioned vide Sanction ID ${B(esc(rec.intSanctionId))} by the sanction Admin ${esc(rec.sanctionAdmin)}. Further, the DPPG has issued the Final Payment Authority bearing Authority ID ${B(esc(rec.intAuthorityId))}, authorising The A.I. of Schools (S.E.) to draw the sanctioned amount ${B(money(sanc))} [Rupees ${B(numberToWords(sanc))} Only] through ${esc(rec.treasury)}.</p>
+    <p>In view of the above facts and approval accorded by the competent authority, I most respectfully request you to be kind enough to take necessary action for release and drawal of the sanctioned Provident Fund Final Payment amount at an early date, so that the admissible dues of the retired employee may be disbursed without further delay.</p>
+    <p>All relevant sanction orders, Final Payment Authority and connected documents are enclosed herewith for your kind perusal and necessary action.</p>
+    <p>I shall remain obliged for your kind cooperation in this matter.</p>
+    <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>
+    <p><b>Enclosures:</b><br>${flintEnclosures(rec)}</p>`;
+  return pageWrap(rec, title, body).replace('</div></div>', `${sigRight(esc(rec.hoiStatus))}</div></div>`);
+}
+
+function docAPPInt(rec){
+  const title = `<div class="doc-ref">To<br>The ${esc(rec.adminStatus)}<br>${esc(rec.schoolName)}<br>${esc(rec.schoolAddress)}<br><br>Through<br>The ${esc(rec.hoiStatus)}<br>${esc(rec.schoolName)}<br>${esc(rec.schoolAddress)}</div>
+    <div class="doc-title" style="font-size:12.5px;text-decoration:none;">Subject: Prayer for payment of due part of Interest accrued during the period: ${esc(intFYof(rec))}</div>
+    <div class="doc-ref">Ref: Employee ID: ${B(esc(rec.employeeCode))} ; PF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
+  const paid = intPaidSentence(rec);
+  const body = `
+  <p>Sir,</p>
+  <p>In connection with the subject stated above I beg to inform you that I, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)}, served to the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break [Vide ${esc(rec.approvalNoDate)}] and retired from my service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.].${paid ? ' It may be mentioned for your kind information that ' + paid.replace(/in favour of (him\/her|him|her)/,'in favour of me') + '.' : ''}</p>
+  <p>Further, I wish to bring to your kind notice that as per recent communication received from DPPG, an amount of ${B(money(intAmtNum(rec)))} [Rupees ${B(intWords(rec))}] has been credited to my Provident Fund account towards due interest accrued for the period ${B(intPeriodStr(rec))} (F.Y. ${B(intFYof(rec))}).</p>
+  <p>I also confirm that I have no liabilities in this school either in Cash or Kinds.</p>
+  <p>In view of the above, I most respectfully request you to kindly take necessary steps for payment of the said interest amount standing at my credit in the GPF account at the earliest convenience, and to submit the online prayer for payment through the NGIPF module accordingly.</p>
+  <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>
+  <p>Date: _ _ _ _ _ _ _ _ _ _ _<br>Place: _ _ _ _ _ _ _ _ _ _ _</p>
+  <p style="text-align:right;margin-top:14px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>${B(esc(rec.staffName))}<br>Ex-${B(esc(rec.designation))}<br>${esc(rec.schoolName)}</p>
+  <p style="text-align:center;font-weight:700;margin-top:20px;">A C C E P T E D</p>`;
+  const doc = pageWrapNoLetterhead(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function intServedPara(rec){
+  return `${B(esc(rec.staffName))} ; ${esc(rec.qualification)} served to the post of ${B(esc(rec.designation))}${sgPhrase(rec)} against a permanent post in this school since ${B(fmtDate(rec.dofj))} without any break [Vide ${esc(rec.approvalNoDate)}] and retired from ${pron(rec,'hisHer')} service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} [a.n.].`;
+}
+function intNoLiabPara(rec){
+  return `Further verification confirms that ${B(esc(rec.staffName))} holds no liabilities, whether in cash or kind, to the school or to the DI/S(S.E.), Bankura or to the A.I. (S), ${esc(rec.aiOfficeAddress)}. There are no instances of salary overdrawal, nor is there any outstanding recovery against loans or advances from ${pron(rec,'hisHer')} GPF account. Additionally, there are no court cases or litigations pending against ${pron(rec,'himHer')} in connection with ${pron(rec,'hisHer')} service.`;
+}
+
+function docAdmnInt(rec){
+  const paid = intPaidSentence(rec);
+  const title = `<div class="doc-title">HOI Report &amp; Administrator Order</div>
+    <div class="doc-ref">HOI Report No: _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _ _ _</div>`;
+  const body = `
+  <p>${intServedPara(rec)}${paid ? ' It may be mentioned that ' + paid + '.' : ''}</p>
+  <p>Now ${pron(rec,'heShe')} has submitted an application for payment of balance interest accrued during the said period standing at ${pron(rec,'hisHer')} credit in GPF account. Necessary arrangements may be taken in this regard. It also may be noted that ${pron(rec,'heShe')} has no liabilities in this school as well as in the DI and AI offices.</p>
+  <p style="font-weight:700;margin-top:18px;">Administrator Order:</p>
+  <div class="doc-ref">Administrator Order No: _ _ _ _ _ _ _ &nbsp;&nbsp; Date: _ _ _ _ _ _ _ _</div>
+  <p>An application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} has been placed for consideration. The application pertains to the payment of accrued interest from ${pron(rec,'hisHer')} General Provident Fund (GPF) for the F.Y. ${B(intFYof(rec))} [${esc(intPeriodStr(rec))}] on account of ${pron(rec,'hisHer')} ${esc(rec.causeOfClaim).toLowerCase()} on the afternoon of ${B(fmtDate(rec.dor))}. Upon thorough examination of the relevant records and documents, it has been verified that ${B(esc(rec.staffName))} served in the capacity of ${B(esc(rec.designation))}${sgPhrase(rec)}, against a permanent post in this institution, that is, ${esc(rec.schoolName)}, since ${B(fmtDate(rec.dofj))}, without any break in service. ${pron(rec,'HisHer')} appointment was duly approved vide ${esc(rec.approvalNoDate)}.</p>
+  ${paid ? `<p>It is also seen that, excluding the interest accrued in ${pron(rec,'hisHer')} GPF account for the F.Y. ${B(intFYof(rec))}, ${paid.replace(/, excluding.*$/,'')}.</p>` : ''}
+  <p>${intNoLiabPara(rec)}</p>
+  <p>As per the online PF statement, the interest amount due has been verified and agreed. Now, in light of the above, it is hereby granted and passed for payment of ${B(money(intAmtNum(rec)))} [Rupees ${B(intWords(rec))}] in favour of ${B(esc(rec.staffName))} in connection with the payment of balance interest for ${B(intFYof(rec))} as per rule, standing at ${pron(rec,'hisHer')} credit in GPF account.</p>
+  <p>Now the ${esc(rec.hoiStatus)} of this school is requested to take necessary arrangements for online submission through the NGIPF module and other required formalities in this regard.</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docMCREngInt(rec){
+  const paid = intPaidSentence(rec);
+  const title = `<div class="doc-title">Resolution of the Managing Committee<br>Regarding Payment of Due Interest of GPF to ${B(esc(rec.staffName))}</div>`;
+  const body = `
+  <p>In the meeting of the Managing Committee, an application submitted by the ${esc(rec.hoiStatus)} of this school on behalf of ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} (retired Ex-${esc(rec.designation)}) was placed for consideration. The application pertains to the payment of interest accrued in ${pron(rec,'hisHer')} GPF account for the F.Y. ${B(intFYof(rec))} [${esc(intPeriodStr(rec))}]. Upon verification of the relevant records and documents, it is found that ${intServedPara(rec)}</p>
+  ${paid ? `<p>It is also seen that, excluding the interest accrued for the F.Y. ${B(intFYof(rec))}, ${paid.replace(/, excluding.*$/,'')}.</p>` : ''}
+  <p>${intNoLiabPara(rec)}</p>
+  <p>Thereafter, after verification of the PF account, the Managing Committee unanimously sanctions and approves payment of the due interest of ${B(money(intAmtNum(rec)))} [Rupees ${B(intWords(rec))}] accrued in ${pron(rec,'hisHer')} PF account for the period ${B(intFYof(rec))}, in ${pron(rec,'hisHer')} favour.</p>
+  <p>It is further resolved to authorise the ${esc(rec.hoiStatus)} of the school to submit the online application through the NGIPF module and to take all other necessary steps.</p>
+  <p>There being no other item to discuss, the meeting was concluded with a vote of thanks to the Chair.</p>`;
+  return pageWrap(rec, title, body);
+}
+
+function docMCRBngInt(rec){
+  const bn = n => `${n} টাকা`;
+  const p = Math.round(parseFloat(rec.paidPrincipal)||0), pi = Math.round(parseFloat(rec.paidInterest)||0);
+  const paidBn = p ? `<p>আরো দেখা গেল যে, ${B(intFYof(rec))} সময়কালে সঞ্চিত সুদের অংশ বাদ দিয়ে অবসর গ্রহণের সময় থেকে অদ্যবধি তার অনুকূলে পিএফ ফাইনাল পেমেন্ট ${B(p)} [ Rupees ${numberToWords(p)} ]${pi && rec.paidIntFY ? ` ও ${B(esc(rec.paidIntFY))} সময়কালে সঞ্চিত সুদের অংশ হিসাবে ${B(bn(pi))} [ Rupees ${numberToWords(pi)} ]` : ''} হিসাবে প্রদান করা হয়েছে।</p>` : '';
+  const title = `<div class="doc-title">ম্যানেজিং কমিটির দ্বারা গৃহীত রেজুলেশনের নির্যাস</div>`;
+  const body = `
+  <p style="text-align:center;">* &nbsp; * &nbsp; * &nbsp; * &nbsp; *</p>
+  <p>_ _ _ _ _ _ _বিদ্যালয়ের পরিচালন সমিতির স্থায়ী সভাপতি / সর্বসম্মতিক্রমে মনোনীত অত্র সভার সভাপতি অত্র সভায় মাননীয় / মাননীয়া _ _ _ _ _ _ _ _ _ সভাপতির আসন গ্রহণ করলে পর সভার কাজ শুরু হল এবং পূর্ববর্তী সভার সিদ্ধান্ত সমূহ অত্র সভায় দৃঢ়ীকৃত ও অনুমোদিত হলো।</p>
+  <p style="text-align:center;">* &nbsp; * &nbsp; * &nbsp; * &nbsp; *</p>
+  <p>মাননীয় / মাননীয়া ${B(esc(rec.staffName))} (অবসরপ্রাপ্ত ${esc(rec.designation)}) মহোদয় / মহোদয়া কর্তৃক ${B(intFYof(rec))} আর্থিক বর্ষে তার পিএফ একাউন্টে অর্জিত সুদের অংশ প্রদান সংক্রান্ত আবেদনপত্রটি বিদ্যালয়ের মাননীয় / মাননীয়া ${esc(rec.hoiStatus)} মহোদয় / মহোদয়া এই সভায় পেশ করেন। এরপর আনুষঙ্গিক নথিপত্র এবং রেকর্ড যাচাই করে দেখা যায়, ${B(esc(rec.staffName))} ; ${esc(rec.qualification)} গত ${B(fmtDate(rec.dofj))} তারিখ থেকে এই স্কুলে অর্থাৎ ${esc(rec.schoolName)} এ স্থায়ী পদে ${esc(rec.subjectGroup)} বিষয়ের ${B(esc(rec.designation))} পদে দায়িত্ব পালন করেছেন, কোনো বিরতি ছাড়াই। তার নিয়োগ বাঁকুড়া জেলা বিদ্যালয় পরিদর্শক (মাধ্যমিক শিক্ষা) এর অফিস কর্তৃক স্মারক নং [Vide ${esc(rec.approvalNoDate)}] এবং ${B(fmtDate(rec.dor))} তারিখে তিনি অবসর গ্রহণ করেছেন।</p>
+  ${paidBn}
+  <p>আরও দেখা গেছে যে তার চাকরিতে প্রথম যোগদানের তারিখ ${B(fmtDate(rec.dofj))}।</p>
+  <p>অতিরিক্ত বেতন প্রদান, ঋণ আদায় না হওয়া এবং জিপিএফের অগ্রিম আদায় করার ক্ষেত্রে ডিআই/এস (এসই), বাঁকুড়া, এ/আই (স্কুল) — ${esc(rec.aiOfficeAddress)} এর সাথে নগদ বা প্রকারের কোনও দায়বদ্ধতা নেই যা তার জিপিএফ এ/সি থেকে এখনও আদায় করা হয়নি। তার চাকরির সাথে সম্পর্কিত কোনও আদালতের মামলা বা মামলা বিচারাধীন নেই।</p>
+  <p>অতঃপর সভায় ${B(esc(rec.staffName))} র পিএফ একাউন্ট যাচাই করে সর্বসম্মতিক্রমে ${B(intFYof(rec))} সময়কালের জন্য তার পিএফ একাউন্টে অর্জিত বকেয়া সুদের অংশ ${B(bn(intAmtNum(rec)))} [Rupees ${B(intWords(rec))}] তার অনুকূলে প্রদানের জন্য মঞ্জুর এবং অনুমোদন করা হল ও অত্র সভায় সর্বসম্মতিক্রমে উপরোক্ত গৃহীত সিদ্ধান্ত সমূহ অনুমোদিত হল।</p>
+  <p>এখন সভায় সর্বসম্মতিক্রমে এই স্কুলের প্রধান শিক্ষক / প্রধান শিক্ষিকা / টিচার ইন চার্জ মহাশয় / মহাশয়াকে এই বিষয়ে NGIPF মডিউলের মাধ্যমে অনলাইন আবেদন জমা দেওয়ার জন্য ও অন্যান্য আনুষঙ্গিক প্রয়োজনীয় পদক্ষেপ গ্রহণ করার জন্য অনুরোধ করা হচ্ছে।</p>
+  <p style="text-align:center;">* &nbsp; * &nbsp; * &nbsp; * &nbsp; *</p>
+  <p>সভায় আর কোন আলোচ্য বিষয় না থাকায় সভাপতি মহোদয় / মহোদয়াকে ধন্যবাদ দিয়ে সভার কাজ শেষ করা হলো।</p>`;
+  return pageWrap(rec, title, body);
+}
+
+function docFormFinalInt(rec){
+  const title = `<div class="doc-title">Particulars in Connection with the Prayer<br>for Payment of Due Interest from the Provident Fund</div>
+    <div class="doc-ref">NGIPF A/C No. ${B(esc(rec.pfAccNo))} [iOSMS ID: ${B(esc(rec.employeeCode))}]</div>`;
+  const body = `
+  <table class="formtbl">
+    <tr><th style="width:38%">1. Name of the incumbent with Designation</th><td>${B(esc(rec.staffName))} ; ${B(esc(rec.designation))}</td></tr>
+    <tr><th>2. Date of Appointment</th><td>${B(fmtDate(rec.dofj))}</td></tr>
+    <tr><th>3. Date of introduction of P.F. / C.P.F</th><td>${fmtMonthYear(rec.pfIntroMonth)}</td></tr>
+    <tr><th>4. Period of Contribution</th><td>From ${fmtMonthYear(rec.pfFirstDeposit)} To ${fmtMonthYear(rec.lastMonthContributed)}</td></tr>
+    <tr><th>5. Total amount of employee's share together with accrued interest (balance position as on the date of payment)</th>
+        <td>${B(money(intAmtNum(rec)))}<br>[Rupees ${B(intWords(rec))} only] (Due Interest Part accrued during the F.Y. ${esc(intFYof(rec))}, i.e. for the period ${esc(intPeriodStr(rec))}.)</td></tr>
+    <tr><th>6. Total amount of Employer's share of C.P.F. together with accrued interest (those who have opted for CPF-cum-Gratuity)</th><td>****</td></tr>
+    <tr><th>7(i). Opted for coming under DCRB scheme</th><td>Pension including Family Pension cum Gratuity</td></tr>
+    <tr><th>7(ii). Date of exercise of option</th><td>****</td></tr>
+    <tr><th>7(iii). Date of Retirement / Death, etc.</th><td>${B(intRetLine(rec))}</td></tr>
+  </table>
+  <p>Certified that the claim for payment is made as per rule 7 of the West Bengal Non-Govt. Educational Institution and Local Authorities' Control of P.F. of Employees Rules, 1984 and that the amount claimed for payment has been properly calculated from the relevant papers/records. It is so declared that if the amount which may be paid to the payee is on or afterwards found to be in excess of that to which ${pron(rec,'heShe')} is actually entitled, ${pron(rec,'heShe')} will refund the excess amount forthwith on demand.</p>
+  <p>Certified also that ${pron(rec,'heShe')} has no liability to the school.</p>
+  <p>Place: ${esc(rec.schoolName)}</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `
+    <div class="sig-row"><div></div>
+      <div class="sig-block"><div class="sig-line"></div>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>Ex-${B(esc(rec.designation))}<br>${esc(rec.schoolName)}</div>
+    </div>
+    <p style="text-align:center;font-weight:700;margin-top:30px;">C O U N T E R S I G N E D</p>
+    ${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}
+  </div></div>`);
+}
+
+function docNoLiabilityInt(rec){
+  const title = `<div class="doc-title">Certificate Regarding No Liability</div>
+    <div class="doc-ref">To whom it may concern<br>Ref: Employee ID: ${B(esc(rec.employeeCode))} ; NGIPF A/C No: ${B(esc(rec.pfAccNo))}</div>`;
+  const body = `
+  <p>Certified that -</p>
+  <p>The subscriber ${B(esc(rec.staffName))}, Ex-${B(esc(rec.designation))} of this school, who retired from ${pron(rec,'hisHer')} service on ${B(fmtDate(rec.dor))} (a.n.), will not raise any objection in connection with the payment of due Interest part for the period ${B(intPeriodStr(rec))} (F.Y. ${B(intFYof(rec))}) from ${pron(rec,'hisHer')} own contribution to the G.P.F. admissible as per rule.</p>
+  <p>${B(esc(rec.staffName))} has no liabilities in the school.</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
+}
+
+function docDelayInt(rec){
+  const title = `<div class="doc-title">Declaration Regarding Late Submission</div>
+    <div class="doc-ref">To<br>The A.I. of Schools (S.E.)<br>${esc(rec.aiOfficeAddress)}</div>`;
+  const body = `
+  <p>Sir,</p>
+  <p>It is hereby declared that papers for payment of P.F. due Interest part for the period ${B(intPeriodStr(rec))} during the F.Y. ${B(intFYof(rec))} in favour of ${B(esc(rec.staffName))}, Ex-${B(esc(rec.designation))} of this school, were not submitted in due time on account of ${esc(rec.delayReason) || 'late submission of application by the employee due to personal problems'}. ${pron(rec,'HeShe')} has already retired from service due to ${esc(rec.causeOfClaim).toLowerCase()} on ${B(fmtDate(rec.dor))} (a.n.)</p>
+  <p>Please condone the matter and do the needful.</p>
+  <p>With Thanks. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Yours faithfully,</p>`;
+  const doc = pageWrap(rec, title, body);
+  return doc.replace('</div></div>', `${sigRow(rec, '', esc(rec.hoiStatus))}</div></div>`);
+}
+
+const DOCS_INT = [
+  {id:'i_cover', label:'Cover Page (Due Interest)', desc:'Two-panel file cover for the interest claim.', fn:docCOVERInt},
+  {id:'i_fl', label:'Forwarding Letter (FL_PF Intt)', desc:'HOI to A.I. of Schools — interest sanction / authority details + enclosures.', fn:docFLInt},
+  {id:'i_formfinal', label:'Particulars for Payment (Form_Final)', desc:'Tabular particulars with due-interest amount in words.', fn:docFormFinalInt},
+  {id:'i_ixa', label:'Form IX-A', desc:'Employee intimation of retirement.', fn:docIXA},
+  {id:'i_app', label:"Application (APP_PF Intt)", desc:"Employee's prayer for payment of due interest.", fn:docAPPInt},
+  {id:'i_nolia', label:'No-Liability Certificate (Cer_NO_LIA)', desc:'No-objection / no-liability for the interest period.', fn:docNoLiabilityInt},
+  {id:'i_mceng', label:'MC Resolution — English', desc:'Managing Committee resolution for due interest.', fn:docMCREngInt},
+  {id:'i_mcbng', label:'MC Resolution — বাংলা (BNG MC)', desc:'Bengali Managing Committee resolution.', fn:docMCRBngInt},
+  {id:'i_admn', label:'HOI Report & Administrator Order (Admn Order)', desc:'HOI report followed by the Administrator order.', fn:docAdmnInt},
+  {id:'i_validity', label:'MC / Administrator Validity Certificate', desc:'Wording follows the Administrative Status selected.', fn:docValidity},
+  {id:'i_delay', label:'Delay Declaration', desc:'Late-submission declaration for the interest period.', fn:docDelayInt},
+  {id:'i_mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate for electronic payment.', fn:docMandate},
+  {id:'i_ledger', label:'GPF Ledger / Interest Statement', desc:'Year-wise interest ledger, computed live.', fn:docLedger},
+];
+function activeDocs(){ return isInt(currentRecord()) ? DOCS_INT : DOCS; }
+
+/* ---- claim-type UI ---- */
+function applyClaimTypeUI(){
+  const rec = currentRecord();
+  const box = document.getElementById('intFieldset');
+  if(box) box.style.display = isInt(rec) ? '' : 'none';
+  const note = document.getElementById('claimNote');
+  if(note) note.textContent = isInt(rec)
+    ? 'Due-interest mode: the Generate Documents tab now produces the interest packet (same set as the PF_INTT_NGIPF workbook).'
+    : 'Final-payment mode: the standard 15-document final-payment bundle.';
+}
+document.getElementById('f_claimType').addEventListener('change', ()=>{
+  readForm(); applyClaimTypeUI(); buildDocGrid();
+});
+document.getElementById('btnFetchInt').addEventListener('click', ()=>{
+  const rec = currentRecord(); if(!rec) return;
+  readForm();
+  const fy = intFYof(rec);
+  if(!fy){ alert('Enter the Date of Retirement (or the Interest F.Y.) first.'); return; }
+  if(!rec.ledger || !rec.ledger[fy]){ alert('No ledger year ' + fy + ' yet. Add it in the "GPF Ledger & Interest" tab (opening balance + rate), then try again.'); return; }
+  const calc = computeYearTotals(rec.ledger[fy], fy, rec.dor);
+  rec.intFY = fy; rec.intAmount = calc.totalInterest;
+  saveStore(); fillForm();
+  alert(`Interest for ${fy} (${intPeriodStr(rec)}) from ledger = ₹${fmtNum(calc.totalInterest)}.\nThis is a CALCULATED figure — replace it with the amount DPPG actually credited before printing.`);
+});
+
+/* ============================================================
+   EXPORT TO EXCEL  (SpreadsheetML — opens in Excel / LibreOffice, one sheet per document)
+   ============================================================ */
+function xmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nodeText(el){
+  const c = el.cloneNode(true);
+  c.querySelectorAll('br').forEach(b=>b.replaceWith('\n'));
+  return c.textContent.replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').trim();
+}
+function htmlToRows(html){
+  const box = document.createElement('div'); box.innerHTML = html; const rows = [];
+  const walk = el => { for(const ch of el.children){
+    if(ch.tagName === 'TABLE'){ ch.querySelectorAll('tr').forEach(tr=> rows.push({cells:[...tr.children].map(td=>({t:nodeText(td), th:td.tagName==='TH'}))})); }
+    else if(ch.classList.contains('sig-row')){ rows.push({cells:[...ch.children].map(c=>({t:nodeText(c)}))}); }
+    else if(ch.classList.contains('doc-title')){ rows.push({cells:[{t:nodeText(ch)}], title:true}); }
+    else if(ch.tagName !== 'P' && ch.querySelector('p,table,.sig-row,.doc-title')) walk(ch);
+    else { const t = nodeText(ch); if(t) rows.push({cells:[{t}]}); }
+  } };
+  box.querySelectorAll('.docpage').forEach((pg,i)=>{ if(i) rows.push({cells:[{t:''}]}); walk(pg); });
+  return rows;
+}
+function sheetXml(name, rows){
+  const C = Math.max(8, ...rows.map(r=>r.cells.length));
+  const W = 62;
+  let x = `<Worksheet ss:Name="${xmlEsc(name)}"><Table>` + `<Column ss:Width="${W}"/>`.repeat(C);
+  rows.forEach(r=>{
+    const k = r.cells.length, span = Math.floor(C/k);
+    let maxLines = 1;
+    let cells = r.cells.map((c,i)=>{
+      const sp = (i===k-1) ? C-span*(k-1) : span;
+      const cpl = Math.max(8, Math.floor(sp*W/5.4));
+      const lines = String(c.t).split('\n').reduce((a,l)=>a+Math.max(1,Math.ceil(l.length/cpl)),0);
+      maxLines = Math.max(maxLines, lines);
+      const st = r.title ? 'sT' : (k>1 ? (c.th?'sH':'sB') : 'sP');
+      return `<Cell ss:MergeAcross="${sp-1}" ss:StyleID="${st}"><Data ss:Type="String">${xmlEsc(c.t)}</Data></Cell>`;
+    }).join('');
+    x += `<Row ss:AutoFitHeight="0" ss:Height="${Math.min(409, maxLines*13.5+4)}">${cells}</Row>`;
+  });
+  return x + '</Table></Worksheet>';
+}
+function exportExcel(){
+  const rec = currentRecord(); if(!rec){ alert('Select or create a record first.'); return; }
+  readForm();
+  const used = new Set();
+  const nm = s => { let n = String(s).replace(/[\[\]:*?\/\\]/g,'').slice(0,28) || 'Sheet'; let k=n,i=2; while(used.has(k.toLowerCase())){ k = n.slice(0,26)+'_'+(i++); } used.add(k.toLowerCase()); return k; };
+  const dataRows = Object.keys(rec).filter(k=>k!=='ledger').map(k=>({cells:[{t:k,th:true},{t:String(rec[k]==null?'':rec[k])}]}));
+  let sheets = sheetXml(nm('DATA'), dataRows);
+  activeDocs().forEach(d=>{ sheets += sheetXml(nm(d.label.replace(/\(.*?\)/g,'').trim()), htmlToRows(d.fn(rec))); });
+  const styles = `<Styles>
+    <Style ss:ID="Default"><Font ss:FontName="Times New Roman" ss:Size="11"/></Style>
+    <Style ss:ID="sP"><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style>
+    <Style ss:ID="sT"><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/><Font ss:FontName="Times New Roman" ss:Size="13" ss:Bold="1"/></Style>
+    <Style ss:ID="sH"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Font ss:FontName="Times New Roman" ss:Size="11" ss:Bold="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>
+    <Style ss:ID="sB"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>
+  </Styles>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}${sheets}</Workbook>`;
+  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = safeFilePart(rec.staffName || rec.pfAccNo || 'record') + (isInt(rec) ? '_DUE_INTEREST_' + intFYof(rec) : '_FINAL_PAYMENT') + '.xls';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  setSyncStatus('✓ Excel exported', '#065f46');
+}
+document.getElementById('btnExportXls').addEventListener('click', exportExcel);
+
+
+/* ============================================================
    DOCUMENT REGISTRY + UI
    ============================================================ */
 const DOCS = [
@@ -1823,7 +2175,7 @@ const DOCS = [
 function buildDocGrid(){
   const grid = document.getElementById('docGrid');
   grid.innerHTML = '';
-  DOCS.forEach(d=>{
+  activeDocs().forEach(d=>{
     const card = document.createElement('div');
     card.className = 'doccard';
     card.innerHTML = `<h4>${d.label}</h4><p>${d.desc}</p><button>Preview &amp; Print</button>`;
@@ -1857,7 +2209,7 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
   if(!rec){ alert('Select or create a record first.'); return; }
   readForm();
   let html = '';
-  DOCS.forEach(d=>{ html += d.fn(rec); });
+  activeDocs().forEach(d=>{ html += d.fn(rec); });
   document.getElementById('printArea').innerHTML = html;
   applyPadGap(rec);
   window.__regen = ()=>document.getElementById('btnPrintAll').click();
