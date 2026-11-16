@@ -653,6 +653,12 @@ footer.note{max-width:1200px;margin:0 auto 40px;padding:0 16px;font-size:11px;co
           <button class="wb txt" data-w="lpThis" title="Turn the pad gap on/off for the sheet where the cursor is">Gap: this sheet</button>
           <button class="wb txt" data-w="lpAll" title="Turn the pad gap on/off for all sheets">Gap: all sheets</button>
         </div>
+        <div class="wgrp" title="Shrink or expand the blank space above the content on the sheet where the cursor is. Letter-pad sheets start at the Top gap; all other sheets (Cover, Application, Nomination) start at the normal page margin. Auto = back to normal.">
+          <label>Space above (this sheet) <input type="number" id="wTopSp" min="0" max="25" step="0.1"> cm</label>
+          <button class="wb txt" data-w="spDown" title="Shrink the space above by 0.5 cm">&minus; Shrink</button>
+          <button class="wb txt" data-w="spUp" title="Expand the space above by 0.5 cm">+ Expand</button>
+          <button class="wb txt" data-w="spAuto" title="Back to the normal space for this sheet">Auto</button>
+        </div>
         <div class="wgrp">
           <button class="wb txt" id="wReset" title="Discard edits and regenerate from the record">↺ Reset to auto text</button>
           <button class="wb pri" onclick="window.print()">🖨 Print</button>
@@ -1674,7 +1680,7 @@ function docFormFinal(rec){
   <p>Certified that the claim for Final Payment is made as per rule 7 of the West Bengal Non-Govt. Educational Institution and Local Authorities' Control of P.F. of Employees Rules, 1984 and that the amount claimed for payment has been properly calculated from the relevant papers/records. It is so declared that if the amount which may be paid to the payee is on or after-wards found to be in excess of that to which ${pron(rec,'heShe')} is actually entitled, ${pron(rec,'heShe')} will refund the excess amount forthwith on demand.</p>
   <p>Certified also that ${pron(rec,'heShe')} has no liability to the school.</p>
   <p>Place: ${esc(rec.schoolName)}</p>`;
-  const doc = pageWrap(rec, title, body);
+  const doc = pageWrapNoLetterhead(rec, title, body);
   return doc.replace('</div></div>', `
     <div class="sig-row">
       <div></div>
@@ -1700,7 +1706,7 @@ function docIXA(rec){
   <p>I have been appointed as _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name and address of the institution) with effect from _ _ _ _ _ _ _ _ _ _ _ which comes under the jurisdiction of _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of authorised officer). Necessary steps may please be taken for transfer of the balance including interest standing at the credit of my General Provident Fund Account Number ${B(esc(rec.pfAccNo))} allotted in my present employment in _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (Name of the institution).</p>
   <p style="margin-top:44px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>${B(esc(rec.designation))}<br>Address: ${esc(rec.employeeAddress)}</p>
   <p style="text-align:center;font-weight:700;margin-top:20px;">C O U N T E R S I G N E D</p>`;
-  const doc = pageWrap(rec, title, body);
+  const doc = pageWrapNoLetterhead(rec, title, body);
   return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
 }
 
@@ -1848,7 +1854,7 @@ function docMandate(rec){
   <p style="margin-top:10px;">Date: _ _ _ _ _ _ _ _ _ _ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Office Seal) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Signature of the Head of Office</p>
   <p class="small" style="margin-top:24px;">*1(e) ID No. &amp; Nature of ID: For individual — Voter Card, Aadhaar Card, PAN Card or any other Identity card issued by the State/Central Government, Government Autonomous Bodies, or Local Bodies. For Autonomous Body/Firm/Company — Registration No. or PAN/TAN Number or Trade Licence.</p>
   <p class="small">**2(a)–(f) Verification of Bank Particulars: Copy of the 1st page of the Pass-Book along with a copy of a cancelled cheque, or certified by the concerned bank branch.</p>`;
-  return pageWrap(rec, title, body);
+  return pageWrapNoLetterhead(rec, title, body);
 }
 
 function docNOM(rec){
@@ -1896,7 +1902,7 @@ function docDeclaration(rec){
   <p>I, ${B(esc(rec.staffName))}, Ex-${B(esc(rec.designation))} of ${esc(rec.schoolName)} ; ${esc(rec.schoolAddress)}, do hereby declare that the amount (G.P.F./C.P.F.) which is to be sanctioned by the appropriate authority, if afterwards found to be in excess over which I am actually entitled to, I will be bound to refund the same (excess money) forthwith on demand.</p>
   <p style="margin-top:44px;">_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>Ex-${B(esc(rec.designation))}<br>Address: ${esc(rec.employeeAddress)}</p>
   <p style="text-align:center;font-weight:700;margin-top:20px;">C O U N T E R S I G N E D</p>`;
-  const doc = pageWrap(rec, title, body);
+  const doc = pageWrapNoLetterhead(rec, title, body);
   return doc.replace('</div></div>', `${sigRow(rec, esc(rec.hoiStatus), esc(rec.adminStatus))}</div></div>`);
 }
 
@@ -1921,7 +1927,7 @@ function docLedger(rec){
     </p>`;
   });
   if(!body) body = '<p>No ledger years have been entered yet. Add a Financial Year in the GPF Ledger &amp; Interest tab.</p>';
-  return pageWrap(rec, title, body);
+  return pageWrapNoLetterhead(rec, title, body);
 }
 
 /* ============================================================
@@ -2113,7 +2119,7 @@ function docFormFinalInt(rec){
   <p>Certified that the claim for payment is made as per rule 7 of the West Bengal Non-Govt. Educational Institution and Local Authorities' Control of P.F. of Employees Rules, 1984 and that the amount claimed for payment has been properly calculated from the relevant papers/records. It is so declared that if the amount which may be paid to the payee is on or afterwards found to be in excess of that to which ${pron(rec,'heShe')} is actually entitled, ${pron(rec,'heShe')} will refund the excess amount forthwith on demand.</p>
   <p>Certified also that ${pron(rec,'heShe')} has no liability to the school.</p>
   <p>Place: ${esc(rec.schoolName)}</p>`;
-  const doc = pageWrap(rec, title, body);
+  const doc = pageWrapNoLetterhead(rec, title, body);
   return doc.replace('</div></div>', `
     <div class="sig-row"><div></div>
       <div class="sig-block"><div class="sig-line"></div>[Signature of the Employee]<br>${B(esc(rec.staffName))}<br>Ex-${B(esc(rec.designation))}<br>${esc(rec.schoolName)}</div>
@@ -2160,6 +2166,7 @@ const DOCS_INT = [
   {id:'i_delay', label:'Delay Declaration', desc:'Late-submission declaration for the interest period.', fn:docDelayInt},
   {id:'i_mandate', label:'e-Payment Mandate (Annexure-II)', desc:'Bank mandate for electronic payment.', fn:docMandate},
   {id:'i_nom', label:'Nomination Form (First Schedule)', desc:'GPF nomination form with nominee table.', fn:docNOM},
+  {id:'i_declaration', label:'Declaration Regarding Overdrawn', desc:'Employee declaration on refund of excess payment.', fn:docDeclaration},
   {id:'i_ledger', label:'GPF Ledger / Interest Statement', desc:'Year-wise interest ledger, computed live.', fn:docLedger},
 ];
 /* ============================================================
@@ -2185,13 +2192,13 @@ function docSetIds(rec){
   if(isInt(rec)){
     const res = adm ? ['i_admn'] : ['i_mceng','i_mcbng'];
     return off === 'khatra'
-      ? ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia', ...res, 'i_validity', ...(delayed?['i_delay']:[]), 'i_mandate','i_ledger']
-      : ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_nom','i_ledger'];
+      ? ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_declaration', ...res, 'i_validity', ...(delayed?['i_delay']:[]), 'i_mandate','i_ledger']
+      : ['i_cover','i_fl','i_app','i_formfinal','i_ixa','i_nolia','i_nom','i_declaration','i_ledger'];
   }
   const res = adm ? ['admn'] : ['mcreng','mcrbng'];
   return off === 'khatra'
-    ? ['cover','flpf','app','formfinal','ixa','nolia', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
-    : ['cover','flpf','nolia','nom','ledger'];
+    ? ['cover','flpf','app','formfinal','ixa','nolia','declaration', ...res, 'validity', ...(delayed?['delay']:[]), 'ledger']
+    : ['cover','flpf','nolia','nom','declaration','ledger'];
 }
 function docSetLabel(rec){
   const off = officeKind(rec);
@@ -2393,6 +2400,19 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
     if(saved){ s.removeAllRanges(); s.addRange(saved); }
     return s.rangeCount>0 && PA.contains(s.getRangeAt(0).commonAncestorContainer);
   }
+  const PX_CM = 37.7953;
+  function curTopCm(pg){ return parseFloat(getComputedStyle(pg).paddingTop) / PX_CM; }
+  function showTopCm(pg){
+    const inp = $id('wTopSp'); if(!inp || !pg || document.activeElement === inp) return;
+    inp.value = (Math.round(curTopCm(pg)*10)/10);
+  }
+  function setTopCm(pg, cm){
+    if(!isFinite(cm)) return;
+    cm = Math.max(0, Math.min(25, cm));
+    pg.style.paddingTop = (Math.round(cm*10)/10) + 'cm';
+    const inp = $id('wTopSp'); if(inp) inp.value = (Math.round(cm*10)/10);
+  }
+  function autoTop(pg){ pg.style.removeProperty('padding-top'); if(!pg.getAttribute('style')) pg.removeAttribute('style'); }
   function syncUi(){
     try{
       ['bold','italic','underline','strikeThrough','subscript','superscript','insertUnorderedList','insertOrderedList','justifyLeft','justifyCenter','justifyRight','justifyFull'].forEach(c=>{
@@ -2400,6 +2420,7 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
       });
       const s=getSelection(); let n=s.anchorNode; if(n && n.nodeType===3) n=n.parentElement;
       if(n && n.nodeType===1 && PA.contains(n)){
+        showTopCm(n.closest('.docpage'));
         const cs=getComputedStyle(n), px=Math.round(parseFloat(cs.fontSize));
         const sz=$id('wSize'); if(![...sz.options].some(o=>+o.value===px)){ const o=document.createElement('option'); o.value=px; o.textContent=px; sz.appendChild(o); } sz.value=px;
         const fam=cs.fontFamily.split(',')[0].replace(/["']/g,'').trim().toLowerCase();
@@ -2465,11 +2486,13 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
         if(!restore()){ msg('Click where the new sheet should start.'); break; }
         const rg=getSelection().getRangeAt(0), page=pageAtCursor(); if(!page){ msg('Click inside a sheet.'); break; }
         const r2=document.createRange(); r2.setStart(rg.startContainer,rg.startOffset); r2.setEnd(page,page.childNodes.length);
-        const frag=r2.extractContents(), np=page.cloneNode(false); np.appendChild(frag);
+        const frag=r2.extractContents(), np=page.cloneNode(false); autoTop(np); np.appendChild(frag);
         if(!np.textContent.trim() && !np.querySelector('img,table')) np.innerHTML='<p><br></p>';
         page.after(np); msg('New sheet created.'); break; }
-      case 'lpThis': { const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); break; } p.classList.toggle('lp'); msg(p.classList.contains('lp')?'Pad gap ON for this sheet.':'Pad gap OFF for this sheet.'); break; }
-      case 'lpAll': { const pages=[...PA.querySelectorAll('.docpage')]; const on=!pages.every(p=>p.classList.contains('lp')); pages.forEach(p=>p.classList.toggle('lp',on)); msg(on?'Pad gap ON for all sheets.':'Pad gap OFF for all sheets.'); break; }
+      case 'spUp': case 'spDown': { const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); break; } setTopCm(p, curTopCm(p) + (a==='spUp'?0.5:-0.5)); break; }
+      case 'spAuto': { const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); break; } autoTop(p); showTopCm(p); msg('Space above is back to normal for this sheet.'); break; }
+      case 'lpThis': { const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); break; } autoTop(p); p.classList.toggle('lp'); msg(p.classList.contains('lp')?'Pad gap ON for this sheet.':'Pad gap OFF for this sheet.'); break; }
+      case 'lpAll': { const pages=[...PA.querySelectorAll('.docpage')]; const on=!pages.every(p=>p.classList.contains('lp')); pages.forEach(p=>{ autoTop(p); p.classList.toggle('lp',on); }); msg(on?'Pad gap ON for all sheets.':'Pad gap OFF for all sheets.'); break; }
     }
   }
   const tool=$id('wtool');
@@ -2478,6 +2501,11 @@ document.getElementById('btnPrintAll').addEventListener('click', ()=>{
     const b=e.target.closest('.wb'); if(!b) return;
     if(b.dataset.lh!==undefined){ const gap=$id('padGapLive'); gap.value=b.dataset.lh; gap.dispatchEvent(new Event('input')); return; }
     if(b.dataset.w) act(b.dataset.w);
+  });
+  $id('wTopSp').addEventListener('change', e=>{
+    const p=pageAtCursor(); if(!p){ msg('Click inside a sheet first.'); return; }
+    const v=parseFloat(e.target.value); if(!isFinite(v) || v<0){ showTopCm(p); return; }
+    setTopCm(p, v);
   });
   $id('wFont').addEventListener('change', e=>span({fontFamily:"'"+e.target.value+"', serif"}));
   $id('wSize').addEventListener('change', e=>span({fontSize:e.target.value+'px'}));
